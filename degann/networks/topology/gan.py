@@ -5,6 +5,7 @@ import tensorflow as tf
 from degann.networks.topology.tf_densenet import TensorflowDenseNet
 from degann.networks import metrics, optimizers
 
+
 class GAN(tf.keras.Model):
     def __init__(
         self,
@@ -34,7 +35,7 @@ class GAN(tf.keras.Model):
             weight=generator_weight_init,
             biases=generator_bias_init,
             is_debug=generator_is_debug,
-            **kwargs.get("generator", dict())
+            **kwargs.get("generator", dict()),
         )
         kwargs.pop("generator", None)
 
@@ -46,7 +47,7 @@ class GAN(tf.keras.Model):
             weight=discriminator_weight_init,
             biases=discriminator_bias_init,
             is_debug=discriminator_is_debug,
-            **kwargs.get("discriminator", dict())
+            **kwargs.get("discriminator", dict()),
         )
         kwargs.pop("discriminator", None)
 
@@ -69,31 +70,29 @@ class GAN(tf.keras.Model):
     ):
         # TODO: come up with a way to store and handle generator metrics
 
-        #self.discriminator.trainable = False
+        # self.discriminator.trainable = False
 
         gan_input = tf.keras.Input(shape=(self.noise_size,))
         concat_layer = tf.keras.layers.Concatenate(axis=1)
-        gan_output = self.discriminator(concat_layer(
-            [gan_input, self.generator(gan_input)]
-        ), training=False)
+        gan_output = self.discriminator(
+            concat_layer([gan_input, self.generator(gan_input)]), training=False
+        )
         self.gan = tf.keras.Model(gan_input, gan_output)
 
         opt = optimizers.get_optimizer(generator_optimizer)(
             learning_rate=generator_rate
         )
         self.gan.compile(
-            loss=generator_loss_func,
-            optimizer=opt,
-            run_eagerly=generator_run_eagerly
+            loss=generator_loss_func, optimizer=opt, run_eagerly=generator_run_eagerly
         )
 
-        #self.discriminator.trainable = True
+        # self.discriminator.trainable = True
         self.discriminator.custom_compile(
             discriminator_rate,
             discriminator_optimizer,
             discriminator_loss_func,
             discriminator_metric_funcs,
-            discriminator_run_eagerly
+            discriminator_run_eagerly,
         )
 
     def call(self, inputs, **kwargs):
@@ -167,19 +166,33 @@ class GAN(tf.keras.Model):
 
         with tf.GradientTape() as disc_tape:
             predictions = self.discriminator(combined_data, training=True)
-            disc_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)(combined_labels, predictions)
+            disc_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)(
+                combined_labels, predictions
+            )
 
-        gradients_of_discriminator = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
-        self.discriminator.optimizer.apply_gradients(zip(gradients_of_discriminator, self.discriminator.trainable_variables))
+        gradients_of_discriminator = disc_tape.gradient(
+            disc_loss, self.discriminator.trainable_variables
+        )
+        self.discriminator.optimizer.apply_gradients(
+            zip(gradients_of_discriminator, self.discriminator.trainable_variables)
+        )
 
         with tf.GradientTape() as gen_tape:
             generated_y = self.generator(generated_x, training=True)
-            fake_output = self.discriminator(tf.concat([generated_x, generated_y], axis=1), training=False)
+            fake_output = self.discriminator(
+                tf.concat([generated_x, generated_y], axis=1), training=False
+            )
 
-            gen_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)(tf.ones((batch_size, 1)), fake_output)
+            gen_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)(
+                tf.ones((batch_size, 1)), fake_output
+            )
 
-        gradients_of_generator = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
-        self.gan.optimizer.apply_gradients(zip(gradients_of_generator, self.generator.trainable_variables))
+        gradients_of_generator = gen_tape.gradient(
+            gen_loss, self.generator.trainable_variables
+        )
+        self.gan.optimizer.apply_gradients(
+            zip(gradients_of_generator, self.generator.trainable_variables)
+        )
 
         return gen_loss, disc_loss
 
@@ -203,7 +216,9 @@ class GAN(tf.keras.Model):
         """
         res = {
             "generator": self.generator.to_dict(**kwargs.get("generator", dict())),
-            "discriminator": self.discriminator.to_dict(**kwargs.get("discriminator", dict()))
+            "discriminator": self.discriminator.to_dict(
+                **kwargs.get("discriminator", dict())
+            ),
         }
 
         return res
@@ -222,14 +237,10 @@ class GAN(tf.keras.Model):
         """
 
         self.generator = TensorflowDenseNet()
-        self.generator.from_dict(
-            config["generator"]
-        )
+        self.generator.from_dict(config["generator"])
 
         self.discriminator = TensorflowDenseNet()
-        self.discriminator.from_dict(
-            config["discriminator"]
-        )
+        self.discriminator.from_dict(config["discriminator"])
 
     def export_to_cpp(
         self,
@@ -262,9 +273,4 @@ class GAN(tf.keras.Model):
         -------
 
         """
-        self.generator.export_to_cpp(
-            path,
-            array_type,
-            path_to_compiler,
-            **kwargs
-        )
+        self.generator.export_to_cpp(path, array_type, path_to_compiler, **kwargs)
