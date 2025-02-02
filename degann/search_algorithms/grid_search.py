@@ -86,13 +86,19 @@ def grid_search_step(
         update_random_generator(i, cycle_size=update_gen_cycle)
         history = SearchHistory()
         b, a = decode(code, block_size=alphabet_block_size, offset=alphabet_offset)
-        nn = imodel.IModel(input_size, b, output_size, a + ["linear"])
-        nn_metrics = [eval_metric] + ([] if metrics is None else metrics)
-        nn.compile(
+        nn_cfg = imodel.TensorflowDenseNetParams(
+            input_size=input_size,
+            block_size=b,
+            output_size=output_size,
+            activation_func=a + ["linear"],
+        )
+        nn = imodel.IModel(nn_cfg)
+        compile_cfg = imodel.SingleNetworkCompileParams(
             optimizer=opt,
             loss_func=loss,
-            metrics=nn_metrics,
+            metric_funcs=[eval_metric] + ([] if metrics is None else metrics),
         )
+        nn.compile(compile_cfg)
         temp_his = nn.train(
             data[0], data[1], epochs=num_epoch, verbose=0, callbacks=callbacks
         )
