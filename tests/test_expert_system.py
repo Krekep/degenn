@@ -10,6 +10,8 @@ from degann.expert.tags import (
     RequiredModelPrecision,
 )
 from degann.networks import IModel
+from degann.networks.topology.topology_parameters import TensorflowDenseNetParams
+from degann.networks.topology.compile_parameters import SingleNetworkCompileParams
 
 
 @pytest.fixture
@@ -47,12 +49,16 @@ def test_expert_system(equation_data):
     validation_data_x = equation_data[1][0]
     validation_data_y = equation_data[1][1]
 
-    nn_1_32_16_8_1 = IModel(input_size=1, block_size=[32, 16, 8], output_size=1)
-    nn_1_32_16_8_1.compile(
-        optimizer="Adam",
-        loss_func="MaxAbsoluteDeviation",
-        metrics=[],
+    topology_cfg = TensorflowDenseNetParams(
+        input_size=1, block_size=[32, 16, 8], output_size=1
     )
+
+    compile_cfg = SingleNetworkCompileParams(
+        optimizer="Adam", loss_func="MaxAbsoluteDeviation", metric_funcs=[]
+    )
+
+    nn_1_32_16_8_1 = IModel(topology_cfg)
+    nn_1_32_16_8_1.compile(compile_cfg)
     model_val_loss = nn_1_32_16_8_1.evaluate(
         validation_data_x, validation_data_y, verbose=0
     )
@@ -65,6 +71,7 @@ def test_expert_system(equation_data):
     algorithms_parameters = suggest_parameters(tags=selector_tags)
     algorithms_parameters.loss_function = "MaxAbsoluteDeviation"
 
+    # TODO: modify search algorithms to use configs
     result_loss, result_nn = execute_pipeline(
         input_size=1,
         output_size=1,
@@ -72,13 +79,13 @@ def test_expert_system(equation_data):
         parameters=algorithms_parameters,
     )
 
-    model_from_expert_system = IModel(1, [], 1)
+    model_from_expert_system = IModel()
     model_from_expert_system.from_dict(result_nn)  # restore model from dict
-    model_from_expert_system.compile(
-        optimizer="Adam",
-        loss_func="MaxAbsoluteDeviation",
-        metrics=[],
+
+    compile_cfg = SingleNetworkCompileParams(
+        optimizer="Adam", loss_func="MaxAbsoluteDeviation", metric_funcs=[]
     )
+    model_from_expert_system.compile(compile_cfg)
 
     expert_val_loss = model_from_expert_system.evaluate(
         validation_data_x, validation_data_y, verbose=0

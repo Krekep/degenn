@@ -2,6 +2,8 @@ import pytest
 
 import numpy as np
 from degann.networks.imodel import IModel
+from degann.networks.topology.topology_parameters import TensorflowDenseNetParams
+from degann.networks.topology.compile_parameters import SingleNetworkCompileParams
 
 
 @pytest.fixture
@@ -33,12 +35,17 @@ def test_densenet_predict(
     validation_data_x = validation_data_x.reshape((1, -1)).T
     validation_data_y = validation_data_y.reshape((1, -1)).T
 
-    nn = IModel(
+    nn_cfg = TensorflowDenseNetParams(
         input_size=shape[0],
         block_size=shape[1],
         output_size=out_size,
     )
-    nn.compile(optimizer="Adam", loss_func="MaxAbsoluteDeviation")
+    nn = IModel(nn_cfg)
+
+    compile_cfg = SingleNetworkCompileParams(
+        optimizer="Adam", loss_func="MaxAbsoluteDeviation"
+    )
+    nn.compile(compile_cfg)
 
     loss_before_train = nn.evaluate(validation_data_x, validation_data_y, verbose=0)
     nn.train(train_data_x, train_data_y, verbose=0)
