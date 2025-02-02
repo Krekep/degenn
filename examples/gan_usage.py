@@ -2,6 +2,15 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
+from degann.networks import IModel
+from degann.networks.topology.topology_parameters import (
+    TensorflowDenseNetParams,
+    GANTopologyParams,
+)
+from degann.networks.topology.compile_parameters import (
+    SingleNetworkCompileParams,
+    GANCompileParams,
+)
 from degann.networks.topology.gan import GAN
 
 # Fix random seed for reproducibility
@@ -42,51 +51,41 @@ def plot_comparison(real_data, fake_data, epoch=None):
 X_train, y_train = generate_real_data(2048)
 dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train)).batch(64)
 
-gan = GAN(
-    # Generator configuration (noise -> fake samples)
-    generator_input_size=1,
-    generator_block_size=[32, 32, 32],
-    generator_output_size=1,
-    generator_activation_func="leaky_relu",
-    # Discriminator configuration (real/fake detection)
-    discriminator_input_size=2,  # Input is [X, y] pairs
-    discriminator_block_size=[32, 32, 32],
-    discriminator_output_size=1,
-    discriminator_activation_func="leaky_relu",
+gen_config = TensorflowDenseNetParams(
+    input_size=1, block_size=[32, 32, 32], output_size=1, activation_func="leaky_relu"
 )
-
-gan.custom_compile(
-    generator_optimizer="Adam",
-    generator_rate=0.0002,
-    generator_loss_func="BinaryCrossentropy",
-    discriminator_optimizer="Adam",
-    discriminator_rate=0.0002,
-    discriminator_loss_func="BinaryCrossentropy",
+disc_config = TensorflowDenseNetParams(
+    input_size=2, block_size=[32, 32, 32], output_size=1, activation_func="leaky_relu"
 )
+gan_params = GANTopologyParams(
+    generator_params=gen_config, discriminator_params=disc_config
+)
+gan = IModel(gan_params)
 
-# Training loop with visualization
-epochs = 1500
-for epoch in range(epochs):
-    print(f"\nEpoch {epoch+1}/{epochs}")
+gen_compile_config = SingleNetworkCompileParams(
+    rate=0.0002, optimizer="Adam", loss_func="BinaryCrossentropy", metric_funcs=[]
+)
+disc_compile_config = SingleNetworkCompileParams(
+    rate=0.0002, optimizer="Adam", loss_func="BinaryCrossentropy", metric_funcs=[]
+)
+gan_compile_config = GANCompileParams(
+    generator_params=gen_compile_config, discriminator_params=disc_compile_config
+)
+gan.compile(gan_compile_config)
 
-    # Train on batches
-    for batch in dataset:
-        metrics = gan.train_step(batch)
+gan.train(X_train, y_train, epochs=1500, mini_batch_size=64)
 
-    print(metrics)
-
-    if (epoch + 1) % 250 == 0:
-        # Generate comparison data
-        n_vis = 500
-        real_vis = (X_train[:n_vis], y_train[:n_vis])
-
-        # Generate fake data with proper noise range
-        vis_noise = tf.random.uniform((n_vis, 1), minval=0, maxval=1)
-        fake_vis = (vis_noise.numpy(), gan(vis_noise).numpy())
-
-        plot_comparison(real_vis, fake_vis, epoch + 1)
-
-# Final comparison
 final_noise = tf.random.uniform((1000, 1), minval=0, maxval=1)
-final_fake = (final_noise.numpy(), gan(final_noise).numpy())
+final_fake = (final_noise.numpy(), gan.predict(final_noise))
 plot_comparison((X_train, y_train), final_fake, "Final")
+
+# # call() function
+# test_input = tf.constant([[0.0]], dtype=tf.float32)
+# print("sin(0 * 10) = ", gan(test_input))
+
+# # to dict and back
+# config = gan.to_dict()
+# gan_restored = GAN(config=gan_params)
+# gan_restored.from_dict(config)
+
+# print("restored: sin(0 * 10) = ", gan_restored(test_input))
