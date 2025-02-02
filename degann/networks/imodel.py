@@ -8,6 +8,15 @@ from tensorflow import keras
 
 from degann.networks.config_format import HEADER_OF_APG_FILE
 from degann.networks.topology.tf_densenet import TensorflowDenseNet
+from degann.networks.topology.gan import GAN
+from degann.networks.topology.topology_parameters import (
+    BaseTopologyParams,
+    TensorflowDenseNetParams,
+)
+from degann.networks.topology.compile_parameters import (
+    BaseCompileParams,
+    SingleNetworkCompileParams,
+)
 
 
 def _get_act_and_init(
@@ -49,76 +58,31 @@ class IModel(object):
     """
 
     def __init__(
-        self,
-        input_size: int,
-        block_size: List[int],
-        output_size: int,
-        activation_func="sigmoid",
-        weight_init=tf.random_uniform_initializer(minval=-1, maxval=1),
-        bias_init=tf.random_uniform_initializer(minval=-1, maxval=1),
-        name="net",
-        net_type="DenseNet",
-        is_debug=False,
-        **kwargs,
+        self, config: BaseTopologyParams = TensorflowDenseNetParams(), **kwargs
     ):
-        self.network = _create_functions[net_type](
-            input_size,
-            block_size,
-            activation_func=activation_func,
-            weight=weight_init,
-            biases=bias_init,
-            output_size=output_size,
-            is_debug=is_debug,
-            **kwargs,
-        )
-        self._input_size = input_size
-        self._output_size = output_size
-        self._shape = block_size
-        self._name = name
-        self._is_debug = is_debug
-        self.set_name(name)
+        self.network = _create_functions[config.net_type](config, **kwargs)
+        self._input_size = config.input_size
+        self._shape = config.block_size
+        self._output_size = config.output_size
+        self._name = config.name
+        self._is_debug = config.is_debug
+        self.set_name(config.name)
 
-    def compile(
-        self,
-        rate: float = 1e-2,
-        optimizer: str | tf.keras.optimizers.Optimizer = "SGD",
-        loss_func: str | tf.keras.losses.Loss = "MeanSquaredError",
-        metrics=None,
-        run_eagerly=False,
-    ) -> None:
+    def compile(self, config: BaseCompileParams = SingleNetworkCompileParams()) -> None:
         """
         Configures the model for training
 
         Parameters
         ----------
-        rate: float
-            learning rate for optimizer
-        optimizer: str
-            name of optimizer
-        loss_func: str
-            name of loss function
-        metrics: list[str]
-            list with metric function names
-        run_eagerly: bool
+        config: BaseCompileParams
+            Subclass of `BaseCompileParams` containing compilation parameters
+            for a particular topology
 
         Returns
         -------
 
         """
-        if metrics is None:
-            metrics = [
-                "MeanSquaredError",
-                "MeanAbsoluteError",
-                "MeanSquaredLogarithmicError",
-            ]
-
-        self.network.custom_compile(
-            optimizer=optimizer,
-            rate=rate,
-            loss_func=loss_func,
-            metric_funcs=metrics,
-            run_eagerly=run_eagerly,
-        )
+        self.network.custom_compile(config)
 
     def feedforward(self, inputs: np.ndarray) -> tf.Tensor:
         """
@@ -485,13 +449,17 @@ class IModel(object):
             tf.random_normal_initializer(),
         )
 
-        res = cls(
+        neuron_cfg = TensorflowDenseNetParams(
             input_size=input_size,
             block_size=shape,
             output_size=output_size,
             activation_func=activation,
-            bias_init=biases,
-            weight_init=weight,
+            biases=biases,
+            weight=weight,
+        )
+
+        res = cls(
+            neuron_cfg,
             decorator_params=decorator_params,
             **kwargs,
         )
@@ -503,3 +471,4 @@ _create_functions: defaultdict[str, Type[tf.keras.Model]] = defaultdict(
     lambda: TensorflowDenseNet
 )
 _create_functions["DenseNet"] = TensorflowDenseNet
+_create_functions["GAN"] = GAN
