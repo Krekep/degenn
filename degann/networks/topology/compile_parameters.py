@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List
 
+
 @dataclass
 class BaseCompileParams:
     """
@@ -13,7 +14,9 @@ class BaseCompileParams:
         (This base class does not define any fields by itself but acts as a base
         for inheritance.)
     """
+
     pass
+
 
 @dataclass
 class SingleNetworkCompileParams(BaseCompileParams):
@@ -27,13 +30,19 @@ class SingleNetworkCompileParams(BaseCompileParams):
         metric_funcs (List[str]): List of metric function names.
         run_eagerly (bool): Whether to run eagerly.
     """
+
     rate: float = 1e-2
     optimizer: str = "SGD"
     loss_func: str = "MeanSquaredError"
-    metric_funcs: List[str] = field(default_factory=lambda: [
-        "MeanSquaredError", "MeanAbsoluteError", "MeanSquaredLogarithmicError"
-    ])
+    metric_funcs: List[str] = field(
+        default_factory=lambda: [
+            "MeanSquaredError",
+            "MeanAbsoluteError",
+            "MeanSquaredLogarithmicError",
+        ]
+    )
     run_eagerly: bool = False
+
 
 @dataclass(kw_only=True)
 class GANCompileParams(BaseCompileParams):
@@ -46,5 +55,6 @@ class GANCompileParams(BaseCompileParams):
         generator_params (SingleNetworkCompileParams): Compile parameters for the generator.
         discriminator_params (SingleNetworkCompileParams): Compile parameters for the discriminator.
     """
+
     generator_params: SingleNetworkCompileParams
     discriminator_params: SingleNetworkCompileParams
