@@ -32,7 +32,6 @@ def parabolic(x: tf.Tensor, beta: float = 0, p: float = 1 / 5):
 _activation_name = {
     "elu": tf.keras.activations.elu,
     "relu": tf.keras.activations.relu,
-    "leaky_relu": tf.keras.activations.leaky_relu,
     "gelu": tf.keras.activations.gelu,
     "selu": tf.keras.activations.selu,
     "exponential": tf.keras.activations.exponential,
@@ -44,6 +43,7 @@ _activation_name = {
     "softplus": tf.keras.activations.softplus,
     "softsign": tf.keras.activations.softsign,
     "parabolic": parabolic,
+    "leaky_relu": tf.nn.leaky_relu,
 }
 
 

@@ -11,7 +11,6 @@ from degann.networks.topology.compile_parameters import (
     SingleNetworkCompileParams,
     GANCompileParams,
 )
-from degann.networks.topology.gan import GAN
 
 # Fix random seed for reproducibility
 tf.random.set_seed(42)
@@ -63,29 +62,30 @@ gan_params = GANTopologyParams(
 gan = IModel(gan_params)
 
 gen_compile_config = SingleNetworkCompileParams(
-    rate=0.0002, optimizer="Adam", loss_func="BinaryCrossentropy", metric_funcs=[]
+    rate=0.0002,
+    optimizer="Adam",
+    loss_func="BinaryCrossentropy",
+    metric_funcs=["MeanAbsoluteError"],
 )
 disc_compile_config = SingleNetworkCompileParams(
-    rate=0.0002, optimizer="Adam", loss_func="BinaryCrossentropy", metric_funcs=[]
+    rate=0.0002,
+    optimizer="Adam",
+    loss_func="BinaryCrossentropy",
+    metric_funcs=["BinaryAccuracy"],
 )
 gan_compile_config = GANCompileParams(
     generator_params=gen_compile_config, discriminator_params=disc_compile_config
 )
 gan.compile(gan_compile_config)
 
-gan.train(X_train, y_train, epochs=1500, mini_batch_size=64)
+log_dir = "examples/gan_usage_log"
+tensorboard_callback = tf.keras.callbacks.TensorBoard(
+    log_dir=log_dir, histogram_freq=0, embeddings_freq=0, update_freq="epoch"
+)
+gan.train(
+    X_train, y_train, epochs=1500, mini_batch_size=64, callbacks=[tensorboard_callback]
+)
 
 final_noise = tf.random.uniform((1000, 1), minval=0, maxval=1)
 final_fake = (final_noise.numpy(), gan.predict(final_noise))
 plot_comparison((X_train, y_train), final_fake, "Final")
-
-# # call() function
-# test_input = tf.constant([[0.0]], dtype=tf.float32)
-# print("sin(0 * 10) = ", gan(test_input))
-
-# # to dict and back
-# config = gan.to_dict()
-# gan_restored = GAN(config=gan_params)
-# gan_restored.from_dict(config)
-
-# print("restored: sin(0 * 10) = ", gan_restored(test_input))
