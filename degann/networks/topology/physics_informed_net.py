@@ -1,4 +1,3 @@
-
 from typing import List, Optional, Dict, Callable
 
 import tensorflow as tf
