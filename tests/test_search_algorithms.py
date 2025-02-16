@@ -55,7 +55,7 @@ def test_pattern_search(equation_data):
     config = {
         "loss_functions": ["MeanSquaredError"],
         "optimizers": ["Adam"],
-        "metrics": ["MaxAbsoluteDeviation"],
+        "eval_metric": "root_mean_squared_error",
         "net_shapes": [[10], [5]],
         "activations": ["parabolic"],
         "validation_split": 0,
@@ -108,7 +108,7 @@ def test_grid_search(equation_data, in_size, out_size):
     grid_search_parameters.nn_alphabet = ["0a", "42"]
 
     (
-        result_loss,
+        result_metric_value,
         result_epoch,
         result_loss_name,
         result_optimizer,
@@ -152,7 +152,7 @@ def test_random_search(equation_data, in_size, out_size):
     random_search_parameters.max_launches = 5
 
     (
-        result_loss,
+        result_metric_value,
         result_epoch,
         result_loss_name,
         result_optimizer,
@@ -199,7 +199,7 @@ def test_sam(equation_data, in_size, out_size):
     simulated_annealing_parameters.distance_method = distance_lin(400, 50)
 
     (
-        result_loss,
+        result_metric_value,
         result_epoch,
         result_loss_name,
         result_optimizer,

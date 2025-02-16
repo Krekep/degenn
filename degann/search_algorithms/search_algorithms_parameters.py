@@ -70,7 +70,7 @@ class BaseSearchParameters:
         "callbacks",
         "logging",
         "file_name",
-        "metrics",
+        "eval_metric",
     ]
 
     def __init__(self) -> None:
@@ -92,7 +92,7 @@ class BaseSearchParameters:
         self.callbacks: Optional[list] = None
         self.logging: bool = False
         self.file_name: str = ""
-        self.metrics: Optional[list[str]] = None
+        self.eval_metric: str = "root_mean_squared_error"
 
     def fill_from_other(self, other: "BaseSearchParameters"):
         self.input_size = other.input_size
@@ -110,7 +110,7 @@ class BaseSearchParameters:
         self.callbacks = other.callbacks
         self.logging = other.logging
         self.file_name = other.file_name
-        self.metrics = other.metrics
+        self.eval_metric = other.eval_metric
 
 
 class GridSearchParameters(BaseSearchParameters):

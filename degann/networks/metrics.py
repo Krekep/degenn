@@ -44,9 +44,9 @@ from degann.networks.losses import get_all_loss_functions
 
 
 _metrics: dict = {
-    "RootMeanSquaredError": keras.metrics.RootMeanSquaredError(),
-    # "MaxDeviation": MaxDeviation(),
-    # "MeanDeviation": MeanDeviation(),
+    "root_mean_squared_error": keras.metrics.RootMeanSquaredError(),
+    # "max_deviation": MaxDeviation(),
+    # "mean_deviation": MeanDeviation(),
 }
 
 _metrics = dict(get_all_loss_functions(), **_metrics)
