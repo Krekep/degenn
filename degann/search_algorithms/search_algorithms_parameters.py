@@ -168,12 +168,12 @@ class RandomEarlyStoppingSearchParameters(RandomSearchParameters):
         Training will stop when the number of iterations of the algorithm exceeds this parameter
     """
 
-    __slots__ = ["max_launches", "loss_threshold"]
+    __slots__ = ["max_launches", "metric_threshold"]
 
     def __init__(self, parent: BaseSearchParameters) -> None:
         super().__init__(parent)
         self.max_launches: int  # -1 for endless search. Number of trained networks equals to `max_launches` * `iterations`
-        self.loss_threshold: float
+        self.metric_threshold: float
 
 
 class SimulatedAnnealingSearchParameters(RandomEarlyStoppingSearchParameters):

@@ -152,7 +152,11 @@ def random_search_endless(
     best_net = net
     best_metric_value = nn_metric_value
     best_epoch = nn_epoch
-    while nn_metric_value > parameters.loss_threshold and i != parameters.max_launches:
+    best_loss_f = loss_f
+    best_opt = opt_n
+    while (
+        nn_metric_value > parameters.metric_threshold and i != parameters.max_launches
+    ):
         if verbose:
             print(
                 f"Random search until less than threshold. Last loss = {nn_metric_value}. Iterations = {i}"
@@ -163,11 +167,13 @@ def random_search_endless(
             best_net = net
             best_metric_value = nn_metric_value
             best_epoch = nn_epoch
+            best_loss_f = loss_f
+            best_opt = opt_n
     return (
         best_metric_value,
         best_epoch,
-        parameters.loss_function,
-        parameters.optimizer,
+        best_loss_f,
+        best_opt,
         best_net,
         i,
     )
