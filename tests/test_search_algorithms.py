@@ -144,7 +144,7 @@ def test_random_search(equation_data, in_size, out_size):
     random_search_parameters.loss_function = "MaxAbsolutePercentageError"
     random_search_parameters.min_epoch = 5
     random_search_parameters.max_epoch = 10
-    random_search_parameters.loss_threshold = 20
+    random_search_parameters.metric_threshold = 20
     random_search_parameters.nn_min_length = 1
     random_search_parameters.nn_max_length = 3
     random_search_parameters.nn_alphabet = ["0a", "f8", "42"]
@@ -191,7 +191,7 @@ def test_sam(equation_data, in_size, out_size):
     simulated_annealing_parameters.loss_function = "Huber"
     simulated_annealing_parameters.min_epoch = 5
     simulated_annealing_parameters.max_epoch = 10
-    simulated_annealing_parameters.loss_threshold = 1
+    simulated_annealing_parameters.metric_threshold = 1
     simulated_annealing_parameters.nn_min_length = 1
     simulated_annealing_parameters.nn_max_length = 3
     simulated_annealing_parameters.nn_alphabet = ["0a", "f8", "42"]
