@@ -191,3 +191,11 @@ experiments/results
 *.h5
 *.apg
 publish_pypi.bat
+
+
+# Visual Studio files
+.vs/
+*.vsidx
+*.suo
+*.user
+*.csproj.user
