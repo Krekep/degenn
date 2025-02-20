@@ -47,6 +47,27 @@ jobs:
           python -m pip install -r requirements.txt
           python -m pip list
 
+      # Install g++ on Ubuntu
+      - name: Install g++ (Ubuntu)
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential g++
+
+      # Install g++ on windows
+      - name: Install g++ (Windows)
+        if: matrix.os == 'windows-latest'
+        id: install_cc
+        uses: rlalik/setup-cpp-compiler@master
+        with:
+          compiler: g++-11.2.0
+
+      # Add g++ to PATH for windows
+      - name: Add g++ to PATH (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          setx PATH "%PATH%;C:\Strawberry\c\bin"
+
       # Run tests from /tests directory
       - name: Run tests
         run: |

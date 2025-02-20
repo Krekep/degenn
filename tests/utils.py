@@ -49,3 +49,72 @@ def file_compare(path1: str, path2: str) -> bool:
         if not f1_lines[i].__eq__(f2_lines[i]):
             return False
     return True
+
+
+def create_main_func(
+    type: str = "none", path: str = "./", import_file: str = "funcs", **kwargs
+) -> str:
+    """
+    This function generates and returns the main function for C++ code
+    need for tests
+
+    Parametrs
+    -------
+    type: str
+        type of main funtion
+    path: str
+        path to save result.txt
+    kwargs
+
+    Returns
+    -------
+    res: str
+        main function
+    """
+    res = ""
+    if type == "val_test":
+        start_value = 0.003
+        if "start_value" in kwargs:
+            start_value = kwargs["start_value"]
+        res = (
+            f"""#include <fstream>
+#include "{path + import_file}.cpp"\n\n"""
+            + """int main() {\n\tfloat a[1] = { """
+            + f"{start_value}"
+            + """ };
+"""
+            + f'    std::ofstream result("{path}result.txt");'
+            + """
+    float* ans = feedforward(a);
+    result << ans[0];
+    result.close();
+    return 0;
+}
+"""
+        )
+    elif type == "time_test":
+        time_test_size = 2500
+        if "time_test_size" in kwargs:
+            time_test_size = kwargs["time_test_size"]
+        res = (
+            f"""#include <fstream>\n#include <chrono>
+#include "{path + import_file}.cpp"\n\n"""
+            + """int main() {\n\tauto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < """
+            + f"{time_test_size}"
+            + """; ++i) {
+        float a[1] = { (float)(rand() % 20 + 1.0f) / (rand() % 20 + 5.0f) };
+        feedforward(a);
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+"""
+            + f'    std::ofstream result("{path}result.txt");'
+            + """
+    result << duration.count();
+    result.close();
+    return 0;
+}
+"""
+        )
+    return res

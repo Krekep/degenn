@@ -1,48 +1,77 @@
-from typing import Callable
-
+from typing import Callable, Dict, Optional
+import torch.optim as optim
+from degann.config import _framework  
 from tensorflow import keras
 
-_optimizers: dict = {
-    "Adadelta": keras.optimizers.Adadelta,
-    "Adafactor": keras.optimizers.Adafactor,
-    "Adagrad": keras.optimizers.Adagrad,
-    "Adam": keras.optimizers.Adam,
-    "AdamW": keras.optimizers.AdamW,
-    "Adamax": keras.optimizers.Adamax,
-    "Ftrl": keras.optimizers.Ftrl,
-    "Lion": keras.optimizers.Lion,
-    "LossScaleOptimizer": keras.optimizers.LossScaleOptimizer,
-    "Nadam": keras.optimizers.Nadam,
-    "RMSprop": keras.optimizers.RMSprop,
-    "SGD": keras.optimizers.SGD,
-}
+optimizers: Dict[str, Callable] = {}
 
-
-def get_optimizer(name: str):
+def _initialize_optimizer():
     """
-    Get optimizer by name
+    Initializes the optimizer and adds it to _optimizer_name.
+
     Parameters
     ----------
-    name: str
-        Name of optimizer
+    name: string
+        The name of the optimizer.
+    """
+    global optimizers
+
+    if _framework == 'TensorFlow':
+        optimizers = {
+            "Adadelta": keras.optimizers.Adadelta,
+            "Adafactor": keras.optimizers.Adafactor,
+            "Adagrad": keras.optimizers.Adagrad,
+            "Adam": keras.optimizers.Adam,
+            "AdamW": keras.optimizers.AdamW,
+            "Adamax": keras.optimizers.Adamax,
+            "Ftrl": keras.optimizers.Ftrl,
+            "Lion": keras.optimizers.Lion,
+            "LossScaleOptimizer": keras.optimizers.LossScaleOptimizer,
+            "Nadam": keras.optimizers.Nadam,
+            "RMSprop": keras.optimizers.RMSprop,
+            "SGD": keras.optimizers.SGD,
+        }
+    elif _framework == 'pytorch':
+        optimizers = {
+            "Adadelta": optim.Adadelta,
+            "Adagrad": optim.Adagrad,
+            "Adam": optim.Adam,
+            "AdamW": optim.AdamW,
+            "Adamax": optim.Adamax,
+            "RMSprop": optim.RMSprop,
+            "SGD": optim.SGD,
+        }
+    else:
+        raise ValueError(f"Unsupported framework: {_framework}")
+
+_initialize_optimizer()
+
+def get_optimizer(name: str, **kwargs) -> Optional[Callable]:
+    """
+    Returns the optimizer by name, automatically initializing it if necessary.
+
+    Parameters
+    ----------
+    name: string
+        The name of the optimizer.
+    kwargs: dict
+        Parameters for initializing the optimizer.
 
     Returns
     -------
-    optimizer_class: tf.keras.losses.Loss
-        Result optimizer
+    optimizer: Optional[Callable]
+        Initialized optimizer or None if the name is not found.
     """
-    return _optimizers.get(name)
+    return optimizers.get(name)
 
 
-def get_all_optimizers() -> dict[str, Callable]:
+def get_all_optimizers() -> Dict[str, Callable]:
     """
-    Get all optimizers
-    Parameters
-    ----------
+    Returns all available optimizers, automatically initializing them if necessary.
 
     Returns
     -------
-    optimizer_class: dict[str, tf.keras.losses.Loss]
-        All optimizers
+    optimizers: Dict[str, Callable]
+        A dictionary of all available optimizers.
     """
-    return _optimizers
+    return optimizers
