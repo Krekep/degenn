@@ -70,7 +70,7 @@ def simulated_annealing(
     curr_best.compile(
         optimizer=parameters.optimizer,
         loss_func=parameters.loss_function,
-        metrics=[parameters.eval_metric],
+        metrics=[parameters.eval_metric] + parameters.metrics,
     )
 
     curr_epoch = gen[1].value()
@@ -81,14 +81,17 @@ def simulated_annealing(
         verbose=0,
         callbacks=parameters.callbacks,
     )
+    curr_loss = hist.history["loss"][-1]
     curr_metric_value = hist.history[parameters.eval_metric][-1]
-    best_val_metric_value = (
-        curr_best.evaluate(
+    if parameters.val_data is not None:
+        val_metrics = curr_best.evaluate(
             parameters.val_data[0], parameters.val_data[1], verbose=0, return_dict=True
-        )[parameters.eval_metric]
-        if parameters.val_data is not None
-        else None
-    )
+        )
+        best_val_loss = val_metrics["loss"]
+        best_val_metric_value = val_metrics[parameters.eval_metric]
+    else:
+        best_val_loss = None
+        best_val_metric_value = None
     best_epoch = curr_epoch
     best_nn = curr_best.to_dict()
     best_gen = gen
@@ -104,6 +107,8 @@ def simulated_annealing(
             epoch=best_gen[1].value(),
             optimizer=parameters.optimizer,
             loss_function=parameters.loss_function,
+            loss=curr_loss,
+            validation_loss=best_val_loss,
             metric_value=best_metric_value,
             validation_metric_value=best_val_metric_value,
             file_name=fn,
@@ -141,7 +146,7 @@ def simulated_annealing(
         neighbor.compile(
             optimizer=parameters.optimizer,
             loss_func=parameters.loss_function,
-            metrics=[parameters.eval_metric],
+            metrics=[parameters.eval_metric] + parameters.metrics,
         )
         neighbor_hist = neighbor.train(
             parameters.data[0],
@@ -150,16 +155,19 @@ def simulated_annealing(
             verbose=0,
             callbacks=parameters.callbacks,
         )
-        neighbor_val_metric_value = (
-            neighbor.evaluate(
+        if parameters.val_data is not None:
+            val_metrics = neighbor.evaluate(
                 parameters.val_data[0],
                 parameters.val_data[1],
                 verbose=0,
                 return_dict=True,
-            )[parameters.eval_metric]
-            if parameters.val_data is not None
-            else None
-        )
+            )
+            neighbor_val_loss = val_metrics[parameters.eval_metric]
+            neighbor_val_metric_value = val_metrics["loss"]
+        else:
+            neighbor_val_loss = None
+            neighbor_val_metric_value = None
+        neighbor_loss = neighbor_hist.history["loss"][-1]
         neighbor_metric_value = neighbor_hist.history[parameters.eval_metric][-1]
 
         if (
@@ -189,6 +197,8 @@ def simulated_annealing(
                 epoch=gen_neighbor[1].value(),
                 optimizer=parameters.optimizer,
                 loss_function=parameters.loss_function,
+                loss=neighbor_loss,
+                validation_loss=neighbor_val_loss,
                 metric_value=neighbor_metric_value,
                 validation_metric_value=neighbor_val_metric_value,
                 file_name=fn,

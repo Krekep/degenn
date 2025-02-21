@@ -178,7 +178,7 @@ def train(
             rate=args.eps,
             optimizer=args.optimizer,
             loss_func=args.loss_function,
-            metrics=[args.eval_metric],
+            metrics=[args.eval_metric] + args.metrics,
             # run_eagerly=True,
         )
 
@@ -326,6 +326,7 @@ class PatternSearchConfig:
             key for key in losses.get_all_loss_functions()
         ]
         self.optimizers: list[str] = [key for key in get_all_optimizers()]
+        self.metrics: list[list[str]] = [[key for key in get_all_metric_functions()]]
         self.eval_metric: str = "root_mean_squared_error"
         self.net_shapes: list[list[int]] = _default_shapes
         self.activations: list[str] = [key for key in activations.get_all_activations()]
@@ -360,6 +361,7 @@ class TrainConfig:
         self.name_salt: str = ""
         self.loss_function: str = "MeanSquaredError"
         self.optimizer: str = "SGD"
+        self.metrics: list[str] = []
         self.eval_metric: str = "root_mean_squared_error"
         self.use_rand_net: bool = True
         self.net_type: str = "DenseNet"

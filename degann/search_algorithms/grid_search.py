@@ -27,6 +27,7 @@ def grid_search_step(
     logging: bool = False,
     file_name: str = "",
     callbacks: Optional[list] = None,
+    metrics: list[str] = [],
     eval_metric: str = "root_mean_squared_error",
 ):
     """
@@ -61,6 +62,8 @@ def grid_search_step(
         Logging search process to file
     file_name: str
         Path to file for logging
+    metrics: Optional[list[str]]
+        List of metrics for model
     eval_metric: str
         Metric used for model evaluation
 
@@ -84,17 +87,22 @@ def grid_search_step(
         history = SearchHistory()
         b, a = decode(code, block_size=alphabet_block_size, offset=alphabet_offset)
         nn = imodel.IModel(input_size, b, output_size, a + ["linear"])
-        nn.compile(optimizer=opt, loss_func=loss, metrics=[eval_metric])
+        nn.compile(optimizer=opt, loss_func=loss, metrics=[eval_metric] + metrics)
         temp_his = nn.train(
             data[0], data[1], epochs=num_epoch, verbose=0, callbacks=callbacks
         )
 
+        curr_loss = temp_his.history["loss"][-1]
         curr_metric_value = temp_his.history[eval_metric][-1]
+
         if val_data is not None:
-            val_metric_value = nn.evaluate(
+            val_history = nn.evaluate(
                 val_data[0], val_data[1], verbose=0, return_dict=True
-            )[eval_metric]
+            )
+            eval_loss = val_history["loss"]
+            val_metric_value = val_history[eval_metric]
         else:
+            eval_loss = None
             val_metric_value = None
 
         if logging:
@@ -106,6 +114,8 @@ def grid_search_step(
                 epoch=num_epoch,
                 optimizer=opt,
                 loss_function=loss,
+                loss=curr_loss,
+                validation_loss=eval_loss,
                 metric_value=curr_metric_value,
                 validation_metric_value=val_metric_value,
                 file_name=fn,
@@ -191,6 +201,7 @@ def grid_search(
                             callbacks=[time_viewer],
                             logging=parameters.logging,
                             file_name=parameters.file_name,
+                            metrics=parameters.metrics,
                             eval_metric=parameters.eval_metric,
                         )
                         if best_metric_value > curr_metric_value:

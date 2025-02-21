@@ -64,7 +64,7 @@ def random_search(
         curr_best.compile(
             optimizer=parameters.optimizer,
             loss_func=parameters.loss_function,
-            metrics=[parameters.eval_metric],
+            metrics=[parameters.eval_metric] + parameters.metrics,
         )
         curr_epoch = gen[1].value()
         hist = curr_best.train(
@@ -74,17 +74,20 @@ def random_search(
             verbose=0,
             callbacks=parameters.callbacks,
         )
+        curr_loss = hist.history["loss"][-1]
         curr_metric_value = hist.history[parameters.eval_metric][-1]
-        curr_val_metric_value = (
-            curr_best.evaluate(
+        if parameters.val_data is not None:
+            val_metrics = curr_best.evaluate(
                 parameters.val_data[0],
                 parameters.val_data[1],
                 verbose=0,
                 return_dict=True,
-            )[parameters.eval_metric]
-            if parameters.val_data is not None
-            else None
-        )
+            )
+            curr_val_loss = val_metrics["loss"]
+            curr_val_metric_value = val_metrics[parameters.eval_metric]
+        else:
+            curr_val_loss = None
+            curr_val_metric_value = None
 
         if parameters.logging:
             fn = f"{parameters.file_name}_{len(parameters.data[0])}_0_{parameters.loss_function}_{parameters.optimizer}"
@@ -95,6 +98,8 @@ def random_search(
                 epoch=gen[1].value(),
                 optimizer=parameters.optimizer,
                 loss_function=parameters.loss_function,
+                loss=curr_loss,
+                validation_loss=curr_val_loss,
                 metric_value=curr_metric_value,
                 validation_metric_value=curr_val_metric_value,
                 file_name=fn,
@@ -152,8 +157,6 @@ def random_search_endless(
     best_net = net
     best_metric_value = nn_metric_value
     best_epoch = nn_epoch
-    best_loss_f = loss_f
-    best_opt = opt_n
     while (
         nn_metric_value > parameters.metric_threshold and i != parameters.max_launches
     ):
@@ -167,13 +170,11 @@ def random_search_endless(
             best_net = net
             best_metric_value = nn_metric_value
             best_epoch = nn_epoch
-            best_loss_f = loss_f
-            best_opt = opt_n
     return (
         best_metric_value,
         best_epoch,
-        best_loss_f,
-        best_opt,
+        parameters.loss_function,
+        parameters.optimizer,
         best_net,
         i,
     )

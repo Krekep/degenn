@@ -70,6 +70,7 @@ class BaseSearchParameters:
         "callbacks",
         "logging",
         "file_name",
+        "metrics",
         "eval_metric",
     ]
 
@@ -92,6 +93,7 @@ class BaseSearchParameters:
         self.callbacks: Optional[list] = None
         self.logging: bool = False
         self.file_name: str = ""
+        self.metrics: list[str] = []
         self.eval_metric: str = "root_mean_squared_error"
 
     def fill_from_other(self, other: "BaseSearchParameters"):
@@ -110,6 +112,7 @@ class BaseSearchParameters:
         self.callbacks = other.callbacks
         self.logging = other.logging
         self.file_name = other.file_name
+        self.metrics = other.metrics
         self.eval_metric = other.eval_metric
 
 
