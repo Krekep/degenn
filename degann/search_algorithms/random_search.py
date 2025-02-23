@@ -40,9 +40,12 @@ def random_search(
     if parameters.nn_alphabet is None:
         parameters.nn_alphabet = default_alphabet
 
-    best_net = dict()
+    best_net: dict
     best_metric_value = 1e6
-    best_epoch = 0
+    best_epoch: int
+
+    assert parameters.iterations > 0, "The number of iterations must be positive."
+
     for i in range(parameters.iterations):
         gen = random_generate(
             min_epoch=parameters.min_epoch,
