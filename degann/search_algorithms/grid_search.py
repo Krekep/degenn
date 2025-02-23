@@ -27,7 +27,7 @@ def grid_search_step(
     logging: bool = False,
     file_name: str = "",
     callbacks: Optional[list] = None,
-    metrics: list[str] = [],
+    metrics: Optional[list[str]] = None,
     eval_metric: str = "root_mean_squared_error",
 ):
     """
@@ -87,7 +87,12 @@ def grid_search_step(
         history = SearchHistory()
         b, a = decode(code, block_size=alphabet_block_size, offset=alphabet_offset)
         nn = imodel.IModel(input_size, b, output_size, a + ["linear"])
-        nn.compile(optimizer=opt, loss_func=loss, metrics=[eval_metric] + metrics)
+        nn_metrics = [eval_metric] + ([] if metrics is None else metrics)
+        nn.compile(
+            optimizer=opt,
+            loss_func=loss,
+            metrics=nn_metrics,
+        )
         temp_his = nn.train(
             data[0], data[1], epochs=num_epoch, verbose=0, callbacks=callbacks
         )
