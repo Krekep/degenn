@@ -307,9 +307,10 @@ def genetic_search(
         )
 
         best_individual = hof[0]
-        print("str repr of the best", genetic_topology_repr_encode(best_individual))
-        print(":", best_individual.fitness.values[0])
-        print("", sum([layer[0] for layer in best_individual]))
+        if logToConsole:
+            print("str repr of the best", genetic_topology_repr_encode(best_individual))
+            print(":", best_individual.fitness.values[0])
+            print("", sum([layer[0] for layer in best_individual]))
 
         # now we do not find "opt" and "loss" just use these ones
         return bestNN[1], -1, "MeanSquaredError", "Adam", bestNN[0]
