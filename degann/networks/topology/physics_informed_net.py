@@ -1,24 +1,27 @@
 from typing import List, Optional, Dict, Callable
 
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow._aliases import TensorCompatible
 
-# from tensorflow import keras
-import keras
-
+from degann.networks.config_format import LAYER_DICT_NAMES
 from degann.networks import layer_creator, losses, metrics, optimizers
+from degann.networks.layers.tf_dense import TensorflowDense
 
 
 class PhysicsInformedNet(keras.Model):
     def __init__(
         self,
-        input_size: int = 2,
-        block_size: list = None,
-        output_size: int = 10,
+        input_size: int = 1,
+        block_size: Optional[list] = None,
+        output_size: int = 1,
+        # TODO: config
         phys_func: Callable | None = None,
         boundary_func: Callable | None = None,
-        phys_k=0.1,
-        boundary_k=1.0,
-        activation_func: str = "linear",
+        phys_k: float | int = 0.1,
+        boundary_k: float | int = 1.0,
+        # ---
+        activation_func: str | list[str] = "linear",
         weight=keras.initializers.RandomUniform(minval=-1, maxval=1),
         biases=keras.initializers.RandomUniform(minval=-1, maxval=1),
         layer: str | List[str] = "Dense",
@@ -26,12 +29,20 @@ class PhysicsInformedNet(keras.Model):
         **kwargs,
     ):
         self._name = "PINN"
+        if block_size is None:
+            block_size = []
+
         decorator_params: List[Optional[Dict]] = [None]
         if "decorator_params" in kwargs.keys():
-            decorator_params = kwargs.get("decorator_params")
+            value = kwargs.get("decorator_params")
+            if isinstance(value, list) and all(
+                isinstance(item, dict) for item in value
+            ):
+                decorator_params = value
             kwargs.pop("decorator_params")
         else:
             decorator_params = [None]
+        super(PhysicsInformedNet, self).__init__(**kwargs)
 
         if (
             isinstance(decorator_params, list)
@@ -48,21 +59,25 @@ class PhysicsInformedNet(keras.Model):
         ):
             decorator_params = decorator_params * (len(block_size) + 1)
 
-        super(PhysicsInformedNet, self).__init__(**kwargs)
         self.blocks: List[keras.layers.Layer] = []
 
         if not isinstance(activation_func, list):
-            activation_func = [activation_func] * (len(block_size) + 1)
+            activation_func_list = [activation_func] * (len(block_size) + 1)
+        else:
+            activation_func_list = activation_func.copy()
         if not isinstance(layer, list):
-            layer = [layer] * (len(block_size) + 1)
+            layer_list = [layer] * (len(block_size) + 1)
+        else:
+            layer_list = layer.copy()
+
         if len(block_size) != 0:
             self.blocks.append(
                 layer_creator.create(
                     input_size,
                     block_size[0],
-                    activation=activation_func[0],
+                    activation=activation_func_list[0],
+                    layer_type=layer_list[0],
                     weight=weight,
-                    layer_type=layer[0],
                     bias=biases,
                     is_debug=is_debug,
                     name=f"PINN0",
@@ -74,10 +89,10 @@ class PhysicsInformedNet(keras.Model):
                     layer_creator.create(
                         block_size[i - 1],
                         block_size[i],
-                        activation=activation_func[i],
+                        activation=activation_func_list[i],
+                        layer_type=layer_list[i],
                         weight=weight,
                         bias=biases,
-                        layer_type=layer[i],
                         is_debug=is_debug,
                         name=f"PINN{i}",
                         decorator_params=decorator_params[i],
@@ -90,7 +105,7 @@ class PhysicsInformedNet(keras.Model):
         self.out_layer = layer_creator.create(
             last_block_size,
             output_size,
-            activation=activation_func[-1],
+            activation=activation_func_list[-1],
             weight=weight,
             bias=biases,
             layer_type=layer[-1],
@@ -99,38 +114,31 @@ class PhysicsInformedNet(keras.Model):
             decorator_params=decorator_params[-1],
         )
 
-        self.activation_funcs = activation_func
+        self.activation_funcs = activation_func_list
         self.weight_initializer = weight
         self.bias_initializer = biases
         self.input_size = input_size
         self.block_size = block_size
         self.output_size = output_size
         self.trained_time = {"train_time": 0.0, "epoch_time": [], "predict_time": 0}
+        # TODO: config
         self.phys_func = phys_func
         self.phys_k = phys_k
         self.boundary_func = boundary_func
         self.boundary_k = boundary_k
-
-    @property
-    def get_activations(self) -> List:
-        """
-        Get list of activations functions for each layer
-        Returns
-        -------
-        activation: list
-        """
-        return [layer.get_activation for layer in self.blocks]
+        # ---
 
     def custom_compile(
         self,
-        rate=1e-2,
-        optimizer="SGD",
-        loss_func="MeanSquaredError",
+        rate: float = 1e-2,
+        optimizer: str | tf.keras.optimizers.Optimizer = "SGD",
+        loss_func: str | tf.keras.losses.Loss = "MeanSquaredError",
         metric_funcs=None,
         run_eagerly=False,
-    ):
+    ) -> None:
         """
         Configures the model for training
+
         Parameters
         ----------
         rate: float
@@ -142,14 +150,19 @@ class PhysicsInformedNet(keras.Model):
         metric_funcs: list[str]
             list with metric function names
         run_eagerly: bool
-        Returns
-        -------
         """
-        if metric_funcs is None:
-            metric_funcs = []
-        opt = optimizers.get_optimizer(optimizer)(learning_rate=rate)
-        loss = losses.get_loss(loss_func)
-        m = [metrics.get_metric(metric) for metric in metric_funcs]
+        loss = losses.get_loss(loss_func) if isinstance(loss_func, str) else loss_func
+        opt = (
+            # TODO: calling None
+            optimizers.get_optimizer(optimizer)(learning_rate=rate)
+            if isinstance(optimizer, str)
+            else optimizer
+        )
+        m = (
+            [metrics.get_metric(metric) for metric in metric_funcs]
+            if metric_funcs is not None
+            else []
+        )
         self.compile(
             optimizer=opt,
             loss=loss,
@@ -164,8 +177,10 @@ class PhysicsInformedNet(keras.Model):
         ----------
         inputs
         kwargs
+
         Returns
         -------
+
         """
         x = inputs
         for layer in self.blocks:
@@ -188,11 +203,11 @@ class PhysicsInformedNet(keras.Model):
         x, y = data
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(x)
-            y_pred = self(x, training=True)  # Forward pass
+            y_pred: tf.Tensor = self(x, training=True)  # Forward pass
             # Compute the loss value
             # (the loss function is configured in `compile()`)
             loss = self.compute_loss(y=y, y_pred=y_pred)
-
+            # TODO: refactor
             phys_deviation = self.phys_func(self, tape, x, y_pred)
             phys_loss = self.compiled_loss(
                 tf.zeros_like(phys_deviation), phys_deviation
@@ -208,6 +223,7 @@ class PhysicsInformedNet(keras.Model):
             total_loss = (
                 loss + self.phys_k * phys_loss + self.boundary_k * boundary_loss
             )
+            # ---
 
         # Compute gradients
         trainable_vars = self.trainable_variables
@@ -237,11 +253,14 @@ class PhysicsInformedNet(keras.Model):
     def to_dict(self, **kwargs):
         """
         Export neural network to dictionary
+
         Parameters
         ----------
         kwargs
+
         Returns
         -------
+
         """
         res = {
             "net_type": "MyPINN",
@@ -276,8 +295,10 @@ class PhysicsInformedNet(keras.Model):
         output_size
         layers
         kwargs
+
         Returns
         -------
+
         """
         res = cls(
             input_size=input_size,
@@ -291,15 +312,15 @@ class PhysicsInformedNet(keras.Model):
 
         return res
 
-    def from_dict(self, config, **kwargs):
+    def from_dict(self, config: dict, **kwargs):
         """
         Restore neural network from dictionary of params
+
         Parameters
         ----------
-        config
-        kwargs
-        Returns
-        -------
+        config: dict
+            Model parameters
+
         """
         input_size = config["input_size"]
         block_size = config["block_size"]
@@ -313,8 +334,18 @@ class PhysicsInformedNet(keras.Model):
         for layer_config in config["layer"]:
             layers.append(layer_creator.from_dict(layer_config))
 
-        self.blocks: List[keras.layers.Layer] = []
+        self.blocks.clear()
         for layer_num in range(len(layers)):
             self.blocks.append(layers[layer_num])
 
         self.out_layer = layer_creator.from_dict(config["out_layer"])
+
+    @property
+    def get_activations(self) -> List:
+        """
+        Get list of activations functions for each layer
+        Returns
+        -------
+        activation: list
+        """
+        return [layer.get_activation for layer in self.blocks]
