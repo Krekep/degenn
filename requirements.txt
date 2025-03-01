@@ -1,4 +1,5 @@
 black~=24.3.0
+deap
 keras~=3.7.0
 matplotlib~=3.10.0
 mypy~=1.14.1
