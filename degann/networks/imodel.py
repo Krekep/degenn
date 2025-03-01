@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from degann.networks.config_format import HEADER_OF_APG_FILE
-from degann.networks.topology.tf_densenet import TensorflowDenseNet
+from degann.networks.topology import TensorflowDenseNet, PhysicsInformedNet
 
 
 def _get_act_and_init(
@@ -503,3 +503,4 @@ _create_functions: defaultdict[str, Type[tf.keras.Model]] = defaultdict(
     lambda: TensorflowDenseNet
 )
 _create_functions["DenseNet"] = TensorflowDenseNet
+_create_functions["PINN"] = PhysicsInformedNet
