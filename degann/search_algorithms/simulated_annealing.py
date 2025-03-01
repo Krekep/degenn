@@ -28,7 +28,7 @@ def simulated_annealing(
     search_results: tuple[float, int, str, str, dict]
         Results of the algorithm are described by these parameters
 
-        best_loss: float
+        best_metric_value: float
             The value of the loss function during training of the best neural network
         best_epoch: int
             Number of training epochs for the best neural network
@@ -38,6 +38,8 @@ def simulated_annealing(
             Name of the optimizer of the best neural network
         best_net: dict
             Best neural network presented as a dictionary
+        iterations: int
+            The number of iterations performed during the search.
     """
     if parameters.nn_alphabet is None:
         parameters.nn_alphabet = default_alphabet
@@ -59,16 +61,18 @@ def simulated_annealing(
         curr_best = imodel.IModel(
             parameters.input_size, b, parameters.output_size, a + ["linear"]
         )
-        curr_best.compile(
-            optimizer=parameters.optimizer,
-            loss_func=parameters.loss_function,
-            metrics=parameters.metrics,
-        )
     else:
         curr_best = imodel.IModel(
             parameters.input_size, [], parameters.output_size, ["linear"]
         )
         curr_best = curr_best.from_dict(parameters.start_net)
+
+    curr_best.compile(
+        optimizer=parameters.optimizer,
+        loss_func=parameters.loss_function,
+        metrics=[parameters.eval_metric] + parameters.metrics,
+    )
+
     curr_epoch = gen[1].value()
     hist = curr_best.train(
         parameters.data[0],
@@ -78,18 +82,21 @@ def simulated_annealing(
         callbacks=parameters.callbacks,
     )
     curr_loss = hist.history["loss"][-1]
-    best_val_loss = (
-        curr_best.evaluate(
+    curr_metric_value = hist.history[parameters.eval_metric][-1]
+    if parameters.val_data is not None:
+        val_metrics = curr_best.evaluate(
             parameters.val_data[0], parameters.val_data[1], verbose=0, return_dict=True
-        )["loss"]
-        if parameters.val_data is not None
-        else None
-    )
+        )
+        best_val_loss = val_metrics["loss"]
+        best_val_metric_value = val_metrics[parameters.eval_metric]
+    else:
+        best_val_loss = None
+        best_val_metric_value = None
     best_epoch = curr_epoch
     best_nn = curr_best.to_dict()
     best_gen = gen
     best_a = curr_best.get_activations
-    best_loss = curr_loss
+    best_metric_value = curr_metric_value
 
     if parameters.logging:
         fn = f"{parameters.file_name}_{len(parameters.data[0])}_0_{parameters.loss_function}_{parameters.optimizer}"
@@ -102,12 +109,17 @@ def simulated_annealing(
             loss_function=parameters.loss_function,
             loss=curr_loss,
             validation_loss=best_val_loss,
+            metric_value=best_metric_value,
+            validation_metric_value=best_val_metric_value,
             file_name=fn,
         )
 
     k = 0
     t = 1
-    while k < parameters.max_launches - 1 and curr_loss > parameters.loss_threshold:
+    while (
+        k < parameters.max_launches - 1
+        and curr_metric_value > parameters.metric_threshold
+    ):
         t = parameters.temperature_method(k=k, k_max=parameters.max_launches, t=t)
         print(parameters.distance_method)
         distance = parameters.distance_method(temperature=t)
@@ -132,7 +144,9 @@ def simulated_annealing(
             parameters.input_size, b, parameters.output_size, a + ["linear"]
         )
         neighbor.compile(
-            optimizer=parameters.optimizer, loss_func=parameters.loss_function
+            optimizer=parameters.optimizer,
+            loss_func=parameters.loss_function,
+            metrics=[parameters.eval_metric] + parameters.metrics,
         )
         neighbor_hist = neighbor.train(
             parameters.data[0],
@@ -141,33 +155,37 @@ def simulated_annealing(
             verbose=0,
             callbacks=parameters.callbacks,
         )
-        neighbor_val_loss = (
-            neighbor.evaluate(
+        if parameters.val_data is not None:
+            val_metrics = neighbor.evaluate(
                 parameters.val_data[0],
                 parameters.val_data[1],
                 verbose=0,
                 return_dict=True,
-            )["loss"]
-            if parameters.val_data is not None
-            else None
-        )
+            )
+            neighbor_val_loss = val_metrics[parameters.eval_metric]
+            neighbor_val_metric_value = val_metrics["loss"]
+        else:
+            neighbor_val_loss = None
+            neighbor_val_metric_value = None
         neighbor_loss = neighbor_hist.history["loss"][-1]
+        neighbor_metric_value = neighbor_hist.history[parameters.eval_metric][-1]
 
         if (
-            neighbor_loss < curr_loss
-            or math.e ** ((curr_loss - neighbor_loss) / t) > random.random()
+            neighbor_metric_value < curr_metric_value
+            or math.e ** ((curr_metric_value - neighbor_metric_value) / t)
+            > random.random()
         ):
             curr_best = neighbor
             gen = gen_neighbor
             curr_epoch = gen_neighbor[1].value()
-            curr_loss = neighbor_loss
-            curr_val_loss = neighbor_val_loss
+            curr_metric_value = neighbor_metric_value
+            curr_val_metric_value = neighbor_val_metric_value
 
-            if curr_loss < best_loss:
-                best_loss = curr_loss
+            if curr_metric_value < best_metric_value:
+                best_metric_value = curr_metric_value
                 best_epoch = curr_epoch
                 best_nn = curr_best.to_dict()
-                best_val_loss = curr_val_loss
+                best_val_metric_value = curr_val_metric_value
         k += 1
 
         if parameters.logging:
@@ -181,11 +199,13 @@ def simulated_annealing(
                 loss_function=parameters.loss_function,
                 loss=neighbor_loss,
                 validation_loss=neighbor_val_loss,
+                metric_value=neighbor_metric_value,
+                validation_metric_value=neighbor_val_metric_value,
                 file_name=fn,
             )
 
     return (
-        best_loss,
+        best_metric_value,
         best_epoch,
         parameters.loss_function,
         parameters.optimizer,

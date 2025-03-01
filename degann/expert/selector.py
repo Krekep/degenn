@@ -36,7 +36,8 @@ class BaseParameters:
     max_train_epoch: int = 500
     iteration_count: int = 5
     loss_function: str = "MaxAbsoluteDeviation"
-    loss_threshold: float = 1
+    eval_metric: str = "root_mean_squared_error"
+    metric_threshold: float = 1
     optimizer: str = "Adam"
     simulated_annealing_params: BaseSamParameters = BaseSamParameters()
 
@@ -96,11 +97,11 @@ def suggest_parameters(
         parameters.iteration_count += 30
 
     if tags.model_precision == RequiredModelPrecision.MINIMAL:
-        parameters.loss_threshold *= 2
+        parameters.metric_threshold *= 2
     if tags.model_precision == RequiredModelPrecision.MEDIAN:
         parameters.iteration_count = int(10 * parameters.iteration_count)
     if tags.model_precision == RequiredModelPrecision.MAXIMAL:
-        parameters.loss_threshold /= 10
+        parameters.metric_threshold /= 10
         parameters.iteration_count = int(40 * parameters.iteration_count)
         parameters.max_train_epoch = 700
 

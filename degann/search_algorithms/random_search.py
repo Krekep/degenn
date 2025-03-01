@@ -26,8 +26,8 @@ def random_search(
     search_results: tuple[float, int, str, str, dict]
         Results of the algorithm are described by these parameters
 
-        best_loss: float
-            The value of the loss function during training of the best neural network
+        best_metric_value: float
+            The value of the metric during training of the best neural network
         best_epoch: int
             Number of training epochs for the best neural network
         best_loss_func: str
@@ -41,8 +41,11 @@ def random_search(
         parameters.nn_alphabet = default_alphabet
 
     best_net: dict
-    best_loss = 1e6
+    best_metric_value = 1e6
     best_epoch: int
+
+    assert parameters.iterations > 0, "The number of iterations must be positive."
+
     for i in range(parameters.iterations):
         gen = random_generate(
             min_epoch=parameters.min_epoch,
@@ -62,7 +65,9 @@ def random_search(
             parameters.input_size, b, parameters.output_size, a + ["linear"]
         )
         curr_best.compile(
-            optimizer=parameters.optimizer, loss_func=parameters.loss_function
+            optimizer=parameters.optimizer,
+            loss_func=parameters.loss_function,
+            metrics=[parameters.eval_metric] + parameters.metrics,
         )
         curr_epoch = gen[1].value()
         hist = curr_best.train(
@@ -73,16 +78,19 @@ def random_search(
             callbacks=parameters.callbacks,
         )
         curr_loss = hist.history["loss"][-1]
-        curr_val_loss = (
-            curr_best.evaluate(
+        curr_metric_value = hist.history[parameters.eval_metric][-1]
+        if parameters.val_data is not None:
+            val_metrics = curr_best.evaluate(
                 parameters.val_data[0],
                 parameters.val_data[1],
                 verbose=0,
                 return_dict=True,
-            )["loss"]
-            if parameters.val_data is not None
-            else None
-        )
+            )
+            curr_val_loss = val_metrics["loss"]
+            curr_val_metric_value = val_metrics[parameters.eval_metric]
+        else:
+            curr_val_loss = None
+            curr_val_metric_value = None
 
         if parameters.logging:
             fn = f"{parameters.file_name}_{len(parameters.data[0])}_0_{parameters.loss_function}_{parameters.optimizer}"
@@ -95,15 +103,17 @@ def random_search(
                 loss_function=parameters.loss_function,
                 loss=curr_loss,
                 validation_loss=curr_val_loss,
+                metric_value=curr_metric_value,
+                validation_metric_value=curr_val_metric_value,
                 file_name=fn,
             )
 
-        if curr_loss < best_loss:
+        if curr_metric_value < best_metric_value:
             best_epoch = curr_epoch
             best_net = curr_best.to_dict()
-            best_loss = curr_loss
+            best_metric_value = curr_metric_value
     return (
-        best_loss,
+        best_metric_value,
         best_epoch,
         parameters.loss_function,
         parameters.optimizer,
@@ -129,8 +139,8 @@ def random_search_endless(
     search_results: tuple[float, int, str, str, dict, int]
         Results of the algorithm are described by these parameters
 
-        best_loss: float
-            The value of the loss function during training of the best neural network
+        best_metric_value: float
+            The value of the metric during training of the best neural network
         best_epoch: int
             Number of training epochs for the best neural network
         best_loss_func: str
@@ -145,24 +155,26 @@ def random_search_endless(
     if parameters.nn_alphabet is None:
         parameters.nn_alphabet = default_alphabet
 
-    nn_loss, nn_epoch, loss_f, opt_n, net = random_search(parameters)
+    nn_metric_value, nn_epoch, loss_f, opt_n, net = random_search(parameters)
     i = 1
     best_net = net
-    best_loss = nn_loss
+    best_metric_value = nn_metric_value
     best_epoch = nn_epoch
-    while nn_loss > parameters.loss_threshold and i != parameters.max_launches:
+    while (
+        nn_metric_value > parameters.metric_threshold and i != parameters.max_launches
+    ):
         if verbose:
             print(
-                f"Random search until less than threshold. Last loss = {nn_loss}. Iterations = {i}"
+                f"Random search until less than threshold. Last loss = {nn_metric_value}. Iterations = {i}"
             )
-        nn_loss, nn_epoch, loss_f, opt_n, net = random_search(parameters)
+        nn_metric_value, nn_epoch, loss_f, opt_n, net = random_search(parameters)
         i += 1
-        if nn_loss < best_loss:
+        if nn_metric_value < best_metric_value:
             best_net = net
-            best_loss = nn_loss
+            best_metric_value = nn_metric_value
             best_epoch = nn_epoch
     return (
-        best_loss,
+        best_metric_value,
         best_epoch,
         parameters.loss_function,
         parameters.optimizer,

@@ -64,6 +64,7 @@ def execute_pipeline(
 
     search_alg_params = BaseSearchParameters()
     search_alg_params.loss_function = parameters.loss_function
+    search_alg_params.eval_metric = parameters.eval_metric
     search_alg_params.optimizer = parameters.optimizer
     search_alg_params.input_size = input_size
     search_alg_params.output_size = output_size
@@ -77,16 +78,16 @@ def execute_pipeline(
     search_alg_params.nn_alphabet_block_size = parameters.nn_alphabet_block_size
     search_alg_params.nn_alphabet_offset = parameters.nn_alphabet_offset
 
-    best_loss, best_nn = 1e6, dict()
+    best_metric_value, best_nn = 1e6, dict()
     for i in range(parameters.launch_count_random_search):
         random_search_parameters = RandomEarlyStoppingSearchParameters(
             search_alg_params
         )
-        random_search_parameters.loss_threshold = parameters.loss_threshold
+        random_search_parameters.metric_threshold = parameters.metric_threshold
         random_search_parameters.max_launches = parameters.iteration_count
         random_search_parameters.iterations = 1
         (
-            train_loss,
+            train_metric_value,
             count_epoch,
             loss_function,
             optimizer,
@@ -97,10 +98,10 @@ def execute_pipeline(
             verbose=True,
         )
         print(f"Ended {i} launch of random search")
-        if train_loss <= random_search_parameters.loss_threshold:
-            return train_loss, result_nn
-        if train_loss <= best_loss:
-            best_loss = train_loss
+        if train_metric_value <= random_search_parameters.metric_threshold:
+            return train_metric_value, result_nn
+        if train_metric_value <= best_metric_value:
+            best_metric_value = train_metric_value
             best_nn = result_nn
     print("Random search didn't find any results")
 
@@ -108,7 +109,7 @@ def execute_pipeline(
         simulated_annealing_parameters = SimulatedAnnealingSearchParameters(
             search_alg_params
         )
-        simulated_annealing_parameters.loss_threshold = parameters.loss_threshold
+        simulated_annealing_parameters.metric_threshold = parameters.metric_threshold
         simulated_annealing_parameters.max_launches = parameters.iteration_count
         simulated_annealing_parameters.iterations = 1
         simulated_annealing_parameters.method_for_generate_next_nn = generate_neighbor
@@ -124,7 +125,7 @@ def execute_pipeline(
             )
         )
         (
-            train_loss,
+            train_metric_value,
             count_epoch,
             loss_function,
             optimizer,
@@ -132,10 +133,10 @@ def execute_pipeline(
             last_iteration,
         ) = simulated_annealing(simulated_annealing_parameters)
         print(f"Ended {i} launch of SAM")
-        if train_loss <= simulated_annealing_parameters.loss_threshold:
-            return train_loss, result_nn
-        if train_loss <= best_loss:
-            best_loss = train_loss
+        if train_metric_value <= simulated_annealing_parameters.metric_threshold:
+            return train_metric_value, result_nn
+        if train_metric_value <= best_metric_value:
+            best_metric_value = train_metric_value
             best_nn = result_nn
     print("Simulated annealing didn't find any results")
 
@@ -149,13 +150,13 @@ def execute_pipeline(
         ] + additional_optimizers
         grid_search_parameters.epoch_step = 50
         (
-            train_loss,
+            train_metric_value,
             count_epoch,
             loss_function,
             optimizer,
             result_nn,
         ) = grid_search(grid_search_parameters)
 
-        return train_loss, result_nn
+        return train_metric_value, result_nn
 
-    return best_loss, best_nn
+    return best_metric_value, best_nn

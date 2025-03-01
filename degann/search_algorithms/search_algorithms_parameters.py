@@ -71,6 +71,7 @@ class BaseSearchParameters:
         "logging",
         "file_name",
         "metrics",
+        "eval_metric",
     ]
 
     def __init__(self) -> None:
@@ -92,7 +93,8 @@ class BaseSearchParameters:
         self.callbacks: Optional[list] = None
         self.logging: bool = False
         self.file_name: str = ""
-        self.metrics: Optional[list[str]] = None
+        self.metrics: list[str] = []
+        self.eval_metric: str = "root_mean_squared_error"
 
     def fill_from_other(self, other: "BaseSearchParameters"):
         self.input_size = other.input_size
@@ -111,6 +113,7 @@ class BaseSearchParameters:
         self.logging = other.logging
         self.file_name = other.file_name
         self.metrics = other.metrics
+        self.eval_metric = other.eval_metric
 
 
 class GridSearchParameters(BaseSearchParameters):
@@ -168,12 +171,12 @@ class RandomEarlyStoppingSearchParameters(RandomSearchParameters):
         Training will stop when the number of iterations of the algorithm exceeds this parameter
     """
 
-    __slots__ = ["max_launches", "loss_threshold"]
+    __slots__ = ["max_launches", "metric_threshold"]
 
     def __init__(self, parent: BaseSearchParameters) -> None:
         super().__init__(parent)
         self.max_launches: int  # -1 for endless search. Number of trained networks equals to `max_launches` * `iterations`
-        self.loss_threshold: float
+        self.metric_threshold: float
 
 
 class SimulatedAnnealingSearchParameters(RandomEarlyStoppingSearchParameters):

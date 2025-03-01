@@ -86,12 +86,12 @@ class SelectAndTrainLayout:
         loss_func_combobox.setCurrentText(str(selector.BaseParameters.loss_function))
         param_value_area.addWidget(loss_func_combobox)
 
-        loss_threshold_text = QtWidgets.QLineEdit(parent=self.centralwidget)
-        loss_threshold_text.setSizePolicy(minimum_police_size)
-        loss_threshold_text.setMinimumSize(QtCore.QSize(0, 60))
-        loss_threshold_text.setObjectName("loss_threshold_text")
-        loss_threshold_text.setText(str(selector.BaseParameters.loss_threshold))
-        param_value_area.addWidget(loss_threshold_text)
+        metric_threshold_text = QtWidgets.QLineEdit(parent=self.centralwidget)
+        metric_threshold_text.setSizePolicy(minimum_police_size)
+        metric_threshold_text.setMinimumSize(QtCore.QSize(0, 60))
+        metric_threshold_text.setObjectName("metric_threshold_text")
+        metric_threshold_text.setText(str(selector.BaseParameters.metric_threshold))
+        param_value_area.addWidget(metric_threshold_text)
 
         optimizer_combobox = QtWidgets.QComboBox(parent=self.centralwidget)
         optimizer_combobox.setSizePolicy(minimum_police_size)

@@ -167,8 +167,8 @@ class MainWindow(QMainWindow):
             QtWidgets.QComboBox, "loss_func_combobox"
         ).setCurrentText(str(self.parameters.loss_function))
         self.select_and_train_widget.findChild(
-            QtWidgets.QLineEdit, "loss_threshold_text"
-        ).setText(str(self.parameters.loss_threshold))
+            QtWidgets.QLineEdit, "metric_threshold_text"
+        ).setText(str(self.parameters.metric_threshold))
         self.select_and_train_widget.findChild(
             QtWidgets.QComboBox, "optimizer_combobox"
         ).setCurrentText(str(self.parameters.optimizer))
@@ -181,9 +181,9 @@ class MainWindow(QMainWindow):
         parameters.loss_function = self.select_and_train_widget.findChild(
             QtWidgets.QComboBox, "loss_func_combobox"
         ).currentText()
-        parameters.loss_threshold = float(
+        parameters.metric_threshold = float(
             self.select_and_train_widget.findChild(
-                QtWidgets.QLineEdit, "loss_threshold_text"
+                QtWidgets.QLineEdit, "metric_threshold_text"
             ).text()
         )
         parameters.optimizer = self.select_and_train_widget.findChild(

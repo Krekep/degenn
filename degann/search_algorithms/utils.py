@@ -86,6 +86,8 @@ def log_search_step(
     loss_function: str,
     loss: float,
     validation_loss: Optional[float],
+    metric_value: float,
+    validation_metric_value: Optional[float],
     file_name: str,
 ) -> None:
     """
@@ -101,6 +103,8 @@ def log_search_step(
     loss_function
     loss
     validation_loss
+    metric_value
+    validation_metric_value
     file_name
 
     Returns
@@ -116,6 +120,8 @@ def log_search_step(
     history.loss_function = [loss_function]
     history.loss = [loss]
     history.validation_loss = [validation_loss]
+    history.metric_value = [metric_value]
+    history.validation_metric_value = [validation_metric_value]
     history.train_time = [model.network.trained_time["train_time"]]
     log_to_file(history.__dict__, file_name)
 
@@ -130,6 +136,8 @@ class SearchHistory:
         self.loss_function: list[str]
         self.loss: list[float]
         self.validation_loss: list[Optional[float]]
+        self.metric_value: list[float]
+        self.validation_metric_value: list[Optional[float]]
         self.train_time: list[float]
 
     def __setitem__(self: "SearchHistory", __key: str, __value: Any):
