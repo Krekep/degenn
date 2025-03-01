@@ -55,7 +55,7 @@ def test_pattern_search(equation_data):
     config = {
         "loss_functions": ["MeanSquaredError"],
         "optimizers": ["Adam"],
-        "metrics": ["MaxAbsoluteDeviation"],
+        "eval_metric": "root_mean_squared_error",
         "net_shapes": [[10], [5]],
         "activations": ["parabolic"],
         "validation_split": 0,
@@ -108,7 +108,7 @@ def test_grid_search(equation_data, in_size, out_size):
     grid_search_parameters.nn_alphabet = ["0a", "42"]
 
     (
-        result_loss,
+        result_metric_value,
         result_epoch,
         result_loss_name,
         result_optimizer,
@@ -144,22 +144,22 @@ def test_random_search(equation_data, in_size, out_size):
     random_search_parameters.loss_function = "MaxAbsolutePercentageError"
     random_search_parameters.min_epoch = 5
     random_search_parameters.max_epoch = 10
-    random_search_parameters.loss_threshold = 20
+    random_search_parameters.metric_threshold = 2.5
     random_search_parameters.nn_min_length = 1
     random_search_parameters.nn_max_length = 3
     random_search_parameters.nn_alphabet = ["0a", "f8", "42"]
     random_search_parameters.iterations = 1
-    random_search_parameters.max_launches = 5
+    random_search_parameters.max_launches = -1
 
     (
-        result_loss,
+        result_metric_value,
         result_epoch,
         result_loss_name,
         result_optimizer,
         result_nn,
         final_iteration,
     ) = random_search_endless(random_search_parameters)
-    assert True
+    assert result_metric_value < random_search_parameters.metric_threshold
 
 
 @pytest.mark.parametrize(
@@ -191,19 +191,19 @@ def test_sam(equation_data, in_size, out_size):
     simulated_annealing_parameters.loss_function = "Huber"
     simulated_annealing_parameters.min_epoch = 5
     simulated_annealing_parameters.max_epoch = 10
-    simulated_annealing_parameters.loss_threshold = 1
+    simulated_annealing_parameters.metric_threshold = 2.5
     simulated_annealing_parameters.nn_min_length = 1
     simulated_annealing_parameters.nn_max_length = 3
     simulated_annealing_parameters.nn_alphabet = ["0a", "f8", "42"]
-    simulated_annealing_parameters.max_launches = 5
+    simulated_annealing_parameters.max_launches = 30
     simulated_annealing_parameters.distance_method = distance_lin(400, 50)
 
     (
-        result_loss,
+        result_metric_value,
         result_epoch,
         result_loss_name,
         result_optimizer,
         result_nn,
         final_iteration,
     ) = simulated_annealing(simulated_annealing_parameters)
-    assert True
+    assert result_metric_value < simulated_annealing_parameters.metric_threshold

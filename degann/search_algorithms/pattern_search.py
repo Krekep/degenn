@@ -178,7 +178,7 @@ def train(
             rate=args.eps,
             optimizer=args.optimizer,
             loss_func=args.loss_function,
-            metrics=args.metrics,
+            metrics=[args.eval_metric] + args.metrics,
             # run_eagerly=True,
         )
 
@@ -207,14 +207,14 @@ def train(
         history.append(temp_last_res)
     result_net = nets[0]
     result_history = history[0]
-    min_err = history[0]["loss"]
+    min_err = history[0][args.eval_metric]
     for i in range(1, len(nets)):
-        if history[i]["loss"] < min_err:
-            min_err = history[i]["loss"]
+        if history[i][args.eval_metric] < min_err:
+            min_err = history[i][args.eval_metric]
             result_net = nets[i]
             result_history = history[i]
     if args.debug:
-        print(f"Minimal loss error is {min_err} {args.name_salt}")
+        print(f"Minimal metric error is {min_err} {args.name_salt}")
     return result_net, result_history
 
 
@@ -285,7 +285,7 @@ def pattern_search(
         map(
             lambda kv: (
                 [(kv[0], v) for v in kv[1]]
-                if isinstance(kv[1], Collection) and len(kv[1]) > 0
+                if isinstance(kv[1], list) and len(kv[1]) > 0
                 else (kv[0], kv[1])
             ),
             args.__dict__.items(),
@@ -309,12 +309,12 @@ def pattern_search(
         if kwargs.get("debug"):
             print(f"Number of set {i}")
         trained, history = train(x_data, y_data, val_data=val_data, **params)
-        loss = history["loss"][-1]
+        metric_value = history[args.eval_metric][-1]
         if val_data is not None:
-            val_loss = history["val_loss"][-1]
+            val_metric_value = history["val_" + args.eval_metric][-1]
         else:
-            val_loss = 10**9
-        best_nets.append((params, loss, val_loss, trained))
+            val_metric_value = 10**9
+        best_nets.append((params, metric_value, val_metric_value, trained))
 
     best_nets.sort(key=lambda x: [x[1], x[2]])
     return best_nets
@@ -327,9 +327,7 @@ class PatternSearchConfig:
         ]
         self.optimizers: list[str] = [key for key in get_all_optimizers()]
         self.metrics: list[list[str]] = [[key for key in get_all_metric_functions()]]
-        self.validation_metrics: list[list[str]] = [
-            [key for key in get_all_metric_functions()]
-        ]
+        self.eval_metric: str = "root_mean_squared_error"
         self.net_shapes: list[list[int]] = _default_shapes
         self.activations: list[str] = [key for key in activations.get_all_activations()]
         self.rates: list[float] = [1e-2, 5e-3, 1e-3]
@@ -363,16 +361,8 @@ class TrainConfig:
         self.name_salt: str = ""
         self.loss_function: str = "MeanSquaredError"
         self.optimizer: str = "SGD"
-        self.metrics: list[str] = [
-            "MeanSquaredError",
-            "MeanAbsoluteError",
-            "CosineSimilarity",
-        ]
-        self.validation_metrics: list[str] = [
-            "MeanSquaredError",
-            "MeanAbsoluteError",
-            "CosineSimilarity",
-        ]
+        self.metrics: list[str] = []
+        self.eval_metric: str = "root_mean_squared_error"
         self.use_rand_net: bool = True
         self.net_type: str = "DenseNet"
         self.nets_param: list[tuple[list[int], list[str], list[None]]] = [
