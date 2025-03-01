@@ -2,7 +2,6 @@ from typing import List, Optional, Dict, Callable
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow._aliases import TensorCompatible
 
 from degann.networks.config_format import LAYER_DICT_NAMES
 from degann.networks import layer_creator, losses, metrics, optimizers
