@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import Optional
+
+from degann.networks.topology.utils import TuningMetadata
 
 
 @dataclass
@@ -15,7 +17,7 @@ class BaseCompileParams:
         for inheritance.)
     """
 
-    pass
+    tuning_metadata: dict[str, TuningMetadata] = field(default_factory=dict)
 
 
 @dataclass
@@ -34,14 +36,21 @@ class SingleNetworkCompileParams(BaseCompileParams):
     rate: float = 1e-2
     optimizer: str = "SGD"
     loss_func: str = "MeanSquaredError"
-    metric_funcs: List[str] = field(
+    metric_funcs: list[str] = field(
         default_factory=lambda: [
-            "MeanSquaredError",
-            "MeanAbsoluteError",
-            "MeanSquaredLogarithmicError",
+            "root_mean_squared_error",
         ]
     )
     run_eagerly: bool = False
+
+    def get_losses(self):
+        return [self.loss_func]
+
+    def get_optimizers(self):
+        return [self.optimizer]
+
+    def add_eval_metric(self, metric: str):
+        self.metric_funcs.append(metric)
 
 
 @dataclass(kw_only=True)
@@ -58,3 +67,17 @@ class GANCompileParams(BaseCompileParams):
 
     generator_params: SingleNetworkCompileParams
     discriminator_params: SingleNetworkCompileParams
+
+    def get_losses(self):
+        return (
+            self.generator_params.get_losses() + self.discriminator_params.get_losses()
+        )
+
+    def get_optimizers(self):
+        return (
+            self.generator_params.get_optimizers()
+            + self.discriminator_params.get_optimizers()
+        )
+
+    def add_eval_metric(self, metric: str):
+        self.generator_params.add_eval_metric(metric)

@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
-from typing import List, Union, Any
+from typing import Union, Any, Optional
 import tensorflow as tf
+
+from degann.networks.topology.utils import TuningMetadata
 
 
 @dataclass
@@ -20,8 +22,10 @@ class BaseTopologyParams:
         is_debug (bool): Flag to enable debugging mode.
     """
 
+    tuning_metadata: dict[str, TuningMetadata] = field(default_factory=dict)
+
     input_size: int = 1
-    block_size: List[int] = field(default_factory=list)
+    block_size: list[int] = field(default_factory=list)
     output_size: int = 1
     name: str = "net"
     net_type: str = "DenseNet"
@@ -39,7 +43,7 @@ class TensorflowDenseNetParams(BaseTopologyParams):
         biases (Any): Initializer for the network's biases. (Default: RandomUniform between -1 and 1)
     """
 
-    activation_func: Union[str, List[str]] = "sigmoid"
+    activation_func: Union[str, list[str]] = "sigmoid"
     weight: Any = field(
         default_factory=lambda: tf.random_uniform_initializer(minval=-1, maxval=1)
     )
