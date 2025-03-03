@@ -14,6 +14,8 @@ class GAN(tf.keras.Model):
         self.block_size = config.block_size
         self.output_size = config.output_size
 
+        self.trained_time = {"train_time": 0.0, "epoch_time": [], "predict_time": 0}
+
         generator_kwargs = kwargs.pop("generator", dict())
         self.generator = TensorflowDenseNet(
             config.generator_params,
@@ -168,6 +170,44 @@ class GAN(tf.keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
+    @tf.function
+    def test_step(self, data):
+        """
+        Custom test (evaluation) step for GAN.
+        """
+        X, y = data
+        batch_size = tf.shape(X)[0]
+
+        generated_x = tf.random.uniform(shape=(batch_size, self.input_size))
+        generated_y = self.generator(generated_x, training=False)
+
+        real_data = tf.concat([X, y], axis=1)
+        fake_data = tf.concat([generated_x, generated_y], axis=1)
+
+        g_loss = self.gan.compute_loss(
+            y=tf.ones((batch_size, 1)), y_pred=self.discriminator(fake_data)
+        )
+
+        combined_data = tf.concat([real_data, fake_data], axis=0)
+        combined_labels = tf.concat(
+            [tf.ones((batch_size, 1)), tf.zeros((batch_size, 1))], axis=0
+        )
+
+        predictions = self.discriminator(combined_data, training=False)
+        d_loss = self.discriminator.compute_loss(y=combined_labels, y_pred=predictions)
+
+        self.d_loss_tracker.update_state(d_loss)
+        self.g_loss_tracker.update_state(g_loss)
+
+        for metric in self.disc_metrics:
+            metric.update_state(combined_labels, predictions)
+
+        y_fake = self.generator(X, training=False)
+        for metric in self.gen_metrics:
+            metric.update_state(y, y_fake)
+
+        return {m.name: m.result() for m in self.metrics}
+
     def set_name(self, new_name):
         self._name = new_name
 
@@ -256,3 +296,6 @@ class GAN(tf.keras.Model):
         return (
             self.generator.get_activations + ["|"] + self.discriminator.get_activations
         )
+
+    def get_loss_names(self):
+        return "g_loss", "d_loss"
