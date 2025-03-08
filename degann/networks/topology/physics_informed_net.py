@@ -6,6 +6,7 @@ from tensorflow import keras
 from degann.networks.config_format import LAYER_DICT_NAMES
 from degann.networks import layer_creator, losses, metrics, optimizers
 from degann.networks.layers.tf_dense import TensorflowDense
+from degann.aliases import LossFunc
 
 
 class PhysicsInformedNet(keras.Model):
@@ -15,8 +16,8 @@ class PhysicsInformedNet(keras.Model):
         block_size: Optional[list] = None,
         output_size: int = 1,
         # TODO: config
-        phys_func: Callable | None = None,
-        boundary_func: Callable | None = None,
+        phys_func: LossFunc | None = None,
+        boundary_func: LossFunc | None = None,
         phys_k: float | int = 0.1,
         boundary_k: float | int = 1.0,
         # ---
@@ -169,7 +170,7 @@ class PhysicsInformedNet(keras.Model):
             run_eagerly=run_eagerly,
         )
 
-    def call(self, inputs, **kwargs):
+    def call(self, inputs, training=None, mask=None):
         """
         Obtaining a neural network response on the input data vector
         Parameters
@@ -182,11 +183,16 @@ class PhysicsInformedNet(keras.Model):
 
         """
         x = inputs
+        if training is None:
+            training = False
         for layer in self.blocks:
-            x = layer(x, **kwargs)
-        return self.out_layer(x, **kwargs)
+            x = layer(x, training=training, mask=mask)
+        return self.out_layer(x, training=training, mask=mask)
 
-    def train_step(self, data):
+    # TODO: ignore the Tensorflow types here,
+    #       because we pass exactly the specified parameters
+    #       to degann.IModel.train in fit().
+    def train_step(self, data: tuple[tf.Tensor, tf.Tensor]):  # type: ignore
         """
         Custom train step with physics and
         boundary losses implementation
@@ -206,13 +212,17 @@ class PhysicsInformedNet(keras.Model):
             # Compute the loss value
             # (the loss function is configured in `compile()`)
             loss = self.compute_loss(y=y, y_pred=y_pred)
+            if loss is None:
+                loss = tf.constant(0)
             # TODO: refactor
-            phys_deviation = self.phys_func(self, tape, x, y_pred)
-            phys_loss = self.compiled_loss(
-                tf.zeros_like(phys_deviation), phys_deviation
-            )
+            phys_loss = tf.constant(0)
+            if self.phys_func is not None:
+                phys_deviation = self.phys_func(self, tape, x, y_pred)
+                phys_loss = self.compiled_loss(
+                    tf.zeros_like(phys_deviation), phys_deviation
+                )
 
-            boundary_loss = 0
+            boundary_loss = tf.constant(0)
             if self.boundary_func is not None:
                 boundary_deviation = self.boundary_func(self, tape, x, y_pred)
                 boundary_loss = self.compiled_loss(
@@ -228,6 +238,8 @@ class PhysicsInformedNet(keras.Model):
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(total_loss, trainable_vars)
         # Update weights
+        if self.optimizer is None:
+            raise RuntimeError("compile or custom_compile must be called before train")
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
         del tape
         # Update metrics (includes the metric that tracks the loss)
