@@ -8,6 +8,7 @@ from tensorflow import keras
 
 from degann.networks.config_format import HEADER_OF_APG_FILE
 from degann.networks.topology.tf_densenet import TensorflowDenseNet
+from degann.networks.topology.tf_convolutionalnet import TensorflowConvolutionNet
 
 
 def _get_act_and_init(
@@ -61,22 +62,38 @@ class IModel(object):
         is_debug=False,
         **kwargs,
     ):
-        self.network = _create_functions[net_type](
-            input_size,
-            block_size,
-            activation_func=activation_func,
-            weight=weight_init,
-            biases=bias_init,
-            output_size=output_size,
-            is_debug=is_debug,
-            **kwargs,
-        )
-        self._input_size = input_size
-        self._output_size = output_size
-        self._shape = block_size
-        self._name = name
-        self._is_debug = is_debug
-        self.set_name(name)
+        match net_type:
+            case "DenseNet":
+                self.network = _create_functions[net_type](
+                    input_size,
+                    block_size,
+                    activation_func=activation_func,
+                    weight=weight_init,
+                    biases=bias_init,
+                    output_size=output_size,
+                    is_debug=is_debug,
+                    **kwargs,
+                )
+                self._input_size = input_size
+                self._output_size = output_size
+                self._shape = block_size
+                self._name = name
+                self._is_debug = is_debug
+                self.set_name(name)
+            case "ConvolutionalNet":
+                self.network = _create_functions[net_type](
+                    output_size=output_size,
+                    activation_func=activation_func,
+                    is_debug=is_debug,
+                    dense_block_sizes=block_size,
+                    **kwargs,
+                )
+                self._input_size = input_size
+                self._output_size = output_size
+                self._shape = block_size
+                self._name = name
+                self._is_debug = is_debug
+                self.set_name(name)
 
     def compile(
         self,
@@ -503,3 +520,4 @@ _create_functions: defaultdict[str, Type[tf.keras.Model]] = defaultdict(
     lambda: TensorflowDenseNet
 )
 _create_functions["DenseNet"] = TensorflowDenseNet
+_create_functions["ConvolutionalNet"] = TensorflowConvolutionNet

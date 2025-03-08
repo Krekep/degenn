@@ -129,9 +129,11 @@ class TensorflowDense(keras.layers.Layer):
             LAYER_DICT_NAMES["biases"]: b.tolist(),
             LAYER_DICT_NAMES["layer_type"]: type(self).__name__,
             LAYER_DICT_NAMES["dtype"]: w.dtype.name,
-            LAYER_DICT_NAMES["activation"]: self.activation_name
-            if self.activation_name is None
-            else self.activation_name,
+            LAYER_DICT_NAMES["activation"]: (
+                self.activation_name
+                if self.activation_name is None
+                else self.activation_name
+            ),
             LAYER_DICT_NAMES["decorator_params"]: _dec_params_to_list(
                 self.decorator_params
             ),
