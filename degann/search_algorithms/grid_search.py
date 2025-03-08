@@ -7,7 +7,11 @@ import numpy as np
 from .nn_code import decode, default_alphabet
 from degann.networks.callbacks import MeasureTrainTime
 from degann.networks import imodel
-from .search_algorithms_parameters import GridSearchParameters
+from .search_algorithms_parameters import (
+    GridSearchParameters,
+    NetSpecificParams,
+    DenseParams,
+)
 from .utils import update_random_generator, log_to_file, SearchHistory, log_search_step
 
 
@@ -29,6 +33,8 @@ def grid_search_step(
     callbacks: Optional[list] = None,
     metrics: Optional[list[str]] = None,
     eval_metric: str = "root_mean_squared_error",
+    net_type: str = "DenseNet",
+    net_params: NetSpecificParams = DenseParams(),
 ):
     """
     This function is a step of the exhaustive search algorithm.
@@ -80,13 +86,21 @@ def grid_search_step(
             Best neural network presented as a dictionary
     """
     best_net = None
+    # TODO: may be float("inf")?
     best_metric_value = 1e6
     best_val_metric_value: Optional[float] = 1e6
     for i in range(repeat):
         update_random_generator(i, cycle_size=update_gen_cycle)
         history = SearchHistory()
         b, a = decode(code, block_size=alphabet_block_size, offset=alphabet_offset)
-        nn = imodel.IModel(input_size, b, output_size, a + ["linear"])
+        nn = imodel.IModel(
+            input_size,
+            b,
+            output_size,
+            a + ["linear"],
+            net_type=net_type,
+            **net_params.dict(),
+        )
         nn_metrics = [eval_metric] + ([] if metrics is None else metrics)
         nn.compile(
             optimizer=opt,
@@ -208,6 +222,7 @@ def grid_search(
                             file_name=parameters.file_name,
                             metrics=parameters.metrics,
                             eval_metric=parameters.eval_metric,
+                            net_type=parameters.net_type,
                         )
                         if best_metric_value > curr_metric_value:
                             best_net = curr_nn
