@@ -1,33 +1,26 @@
 from datetime import datetime
-from itertools import product
-from typing import Optional, List, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
-from .nn_code import decode, default_alphabet
 from degann.networks.callbacks import MeasureTrainTime
 from degann.networks import imodel
+from degann.networks.topology.utils import generate_all_configurations
 from .search_algorithms_parameters import GridSearchParameters
 from .utils import update_random_generator, log_to_file, SearchHistory, log_search_step
 
 
 def grid_search_step(
-    input_size: int,
-    output_size: int,
-    code: str,
+    model_cfg: imodel.BaseTopologyParams,
+    compile_cfg: imodel.BaseCompileParams,
     num_epoch: int,
-    opt: str,
-    loss: str,
     data: tuple[np.ndarray, np.ndarray],
     repeat: int = 1,
-    alphabet_block_size: int = 1,
-    alphabet_offset: int = 8,
     val_data: Optional[tuple[np.ndarray, np.ndarray]] = None,
     update_gen_cycle: int = 0,
     logging: bool = False,
     file_name: str = "",
     callbacks: Optional[list] = None,
-    metrics: Optional[list[str]] = None,
     eval_metric: str = "root_mean_squared_error",
 ):
     """
@@ -36,34 +29,22 @@ def grid_search_step(
 
     Parameters
     ----------
-    input_size: int
-       Size of input data
-    output_size: int
-        Size of output data
-    code: str
-        Neural network as code
+    model_cfg: BaseTopologyParams
+        Config for model to train
+    compile_cfg: BaseCompileParams
+        Config for model compilation
     num_epoch: int
         Number of training epochs
     data: tuple
         Dataset
-    opt: str
-        Optimizer
-    loss: str
-        Name of loss function
     repeat: int
         How many times will be repeated this step
-    alphabet_block_size: int
-        Number of literals in each `alphabet` symbol that indicate the size of hidden layer
-    alphabet_offset: int
-        Indicate the minimal number of neurons in hidden layer
     val_data: Optional[tuple[np.ndarray, np.ndarray]]
         Validation dataset
     logging: bool
         Logging search process to file
     file_name: str
         Path to file for logging
-    metrics: Optional[list[str]]
-        List of metrics for model
     eval_metric: str
         Metric used for model evaluation
 
@@ -85,40 +66,39 @@ def grid_search_step(
     for i in range(repeat):
         update_random_generator(i, cycle_size=update_gen_cycle)
         history = SearchHistory()
-        b, a = decode(code, block_size=alphabet_block_size, offset=alphabet_offset)
-        nn = imodel.IModel(input_size, b, output_size, a + ["linear"])
-        nn_metrics = [eval_metric] + ([] if metrics is None else metrics)
-        nn.compile(
-            optimizer=opt,
-            loss_func=loss,
-            metrics=nn_metrics,
-        )
+
+        nn = imodel.IModel(model_cfg)
+        compile_cfg.add_eval_metric(eval_metric)
+        nn.compile(compile_cfg)
+
         temp_his = nn.train(
             data[0], data[1], epochs=num_epoch, verbose=0, callbacks=callbacks
         )
 
-        curr_loss = temp_his.history["loss"][-1]
+        loss_names = nn.network.get_loss_names()
+        curr_loss = [temp_his.history[name][-1] for name in loss_names]
         curr_metric_value = temp_his.history[eval_metric][-1]
 
         if val_data is not None:
             val_history = nn.evaluate(
                 val_data[0], val_data[1], verbose=0, return_dict=True
             )
-            eval_loss = val_history["loss"]
+            eval_loss = [val_history[name] for name in loss_names]
             val_metric_value = val_history[eval_metric]
         else:
             eval_loss = None
             val_metric_value = None
 
         if logging:
-            fn = f"{file_name}_{len(data[0])}_{num_epoch}_{loss}_{opt}"
+            str_losses = "_".join(compile_cfg.get_losses())
+            str_optimizers = "_".join(compile_cfg.get_optimizers())
+            fn = f"{file_name}_{len(data[0])}_{num_epoch}_{str_losses}_{str_optimizers}"
             log_search_step(
                 model=nn,
-                activations=a,
-                code=code,
+                activations=nn.get_activations(),
                 epoch=num_epoch,
-                optimizer=opt,
-                loss_function=loss,
+                optimizers=str_optimizers,
+                loss_functions=str_losses,
                 loss=curr_loss,
                 validation_loss=eval_loss,
                 metric_value=curr_metric_value,
@@ -167,9 +147,6 @@ def grid_search(
         best_net: dict
             Best neural network presented as a dictionary
     """
-    if parameters.nn_alphabet is None:
-        parameters.nn_alphabet = default_alphabet
-
     best_net: dict = dict()
     best_metric_value: float = 1e6
     best_epoch: int = 0
@@ -177,42 +154,30 @@ def grid_search(
     best_opt: str = ""
     time_viewer = MeasureTrainTime()
 
-    for i in range(parameters.nn_min_length, parameters.nn_max_length + 1):
-        if verbose:
-            print(i, datetime.today().strftime("%Y-%m-%d %H:%M:%S"))
-        codes = product(parameters.nn_alphabet, repeat=i)
-        for elem in codes:
-            code = "".join(elem)
+    for model_cfg in generate_all_configurations(parameters.model_cfg):
+        for compile_cfg in generate_all_configurations(parameters.compile_cfg):
             for epoch in range(
                 parameters.min_epoch, parameters.max_epoch + 1, parameters.epoch_step
             ):
-                for opt in parameters.optimizers:
-                    for loss_func in parameters.losses:
-                        (
-                            curr_metric_value,
-                            curr_val_metric_value,
-                            curr_nn,
-                        ) = grid_search_step(
-                            input_size=parameters.input_size,
-                            output_size=parameters.output_size,
-                            code=code,
-                            num_epoch=epoch,
-                            opt=opt,
-                            loss=loss_func,
-                            data=parameters.data,
-                            alphabet_block_size=parameters.nn_alphabet_block_size,
-                            alphabet_offset=parameters.nn_alphabet_offset,
-                            val_data=parameters.val_data,
-                            callbacks=[time_viewer],
-                            logging=parameters.logging,
-                            file_name=parameters.file_name,
-                            metrics=parameters.metrics,
-                            eval_metric=parameters.eval_metric,
-                        )
-                        if best_metric_value > curr_metric_value:
-                            best_net = curr_nn
-                            best_metric_value = curr_metric_value
-                            best_epoch = epoch
-                            best_loss_func = loss_func
-                            best_opt = opt
+                (
+                    curr_metric_value,
+                    curr_val_metric_value,
+                    curr_nn,
+                ) = grid_search_step(
+                    model_cfg=model_cfg,
+                    compile_cfg=compile_cfg,
+                    num_epoch=epoch,
+                    data=parameters.data,
+                    val_data=parameters.val_data,
+                    callbacks=[time_viewer],
+                    logging=parameters.logging,
+                    file_name=parameters.file_name,
+                    eval_metric=parameters.eval_metric,
+                )
+                if best_metric_value > curr_metric_value:
+                    best_net = curr_nn
+                    best_metric_value = curr_metric_value
+                    best_epoch = epoch
+                    best_loss_func = compile_cfg.get_losses()
+                    best_opt = compile_cfg.get_optimizers()
     return best_metric_value, best_epoch, best_loss_func, best_opt, best_net

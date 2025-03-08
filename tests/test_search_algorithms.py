@@ -16,6 +16,16 @@ from degann.search_algorithms.search_algorithms_parameters import (
 )
 from degann.search_algorithms.simulated_annealing_functions import distance_lin
 
+from degann.networks.topology.topology_parameters import (
+    TensorflowDenseNetParams,
+    GANTopologyParams,
+)
+from degann.networks.topology.compile_parameters import (
+    SingleNetworkCompileParams,
+    GANCompileParams,
+)
+from degann.networks.topology.utils import TuningMetadata
+
 
 @pytest.fixture
 def train_file_name():
@@ -91,21 +101,29 @@ def test_grid_search(equation_data, in_size, out_size):
     validation_data_x = equation_data[1][0]
     validation_data_y = equation_data[1][1]
 
+    model_metadata = {
+        "block_size": TuningMetadata(value_range=(10, 20, 10), length_boundary=(1, 1)),
+        "activation_func": TuningMetadata(choices=["sigmoid", "relu"]),
+    }
+    model_cfg = TensorflowDenseNetParams(
+        input_size=in_size, output_size=out_size, tuning_metadata=model_metadata
+    )
+
+    compile_metadata = {
+        "optimizer": TuningMetadata(choices=["SGD", "Adam"]),
+    }
+    compile_cfg = SingleNetworkCompileParams(tuning_metadata=compile_metadata)
+
     search_alg_params = BaseSearchParameters()
-    search_alg_params.input_size = in_size
-    search_alg_params.output_size = out_size
+    search_alg_params.model_cfg = model_cfg
+    search_alg_params.compile_cfg = compile_cfg
     search_alg_params.data = (train_data_x, train_data_y)
     search_alg_params.val_data = (validation_data_x, validation_data_y)
 
     grid_search_parameters = GridSearchParameters(search_alg_params)
-    grid_search_parameters.optimizers = ["Adam"]
-    grid_search_parameters.losses = ["MeanAbsolutePercentageError"]
     grid_search_parameters.min_epoch = 5
     grid_search_parameters.max_epoch = 10
     grid_search_parameters.epoch_step = 5
-    grid_search_parameters.nn_min_length = 1
-    grid_search_parameters.nn_max_length = 2
-    grid_search_parameters.nn_alphabet = ["0a", "42"]
 
     (
         result_metric_value,
@@ -114,6 +132,67 @@ def test_grid_search(equation_data, in_size, out_size):
         result_optimizer,
         result_nn,
     ) = grid_search(grid_search_parameters)
+
+    # Grid search for GAN
+
+    # Search the number of neurons in a layer (10 or 20) and the number of layers (1 or 2)
+    generator_metadata = {
+        "block_size": TuningMetadata(
+            value_range=(10, 20, 10),
+        ),
+    }
+    generator_cfg = TensorflowDenseNetParams(
+        tuning_metadata=generator_metadata, activation_func="relu"
+    )
+
+    # Search the number of neurons in a layer (10 or 20)
+    discriminator_metadata = {
+        "block_size": TuningMetadata(value_range=(10, 20, 10), length_boundary=(1, 2)),
+    }
+    discriminator_cfg = TensorflowDenseNetParams(
+        tuning_metadata=discriminator_metadata, input_size=2, activation_func="relu"
+    )
+
+    GAN_config = GANTopologyParams(
+        generator_params=generator_cfg, discriminator_params=discriminator_cfg
+    )
+
+    generator_compile_config = SingleNetworkCompileParams(
+        optimizer="Adam", loss_func="BinaryCrossentropy", metric_funcs=[]
+    )
+    # Run with 2 optimisers: Adam and SGD
+    compile_metadata = {
+        "optimizer": TuningMetadata(choices=["SGD", "Adam"]),
+    }
+    discriminator_compile_config = SingleNetworkCompileParams(
+        tuning_metadata=compile_metadata,
+        loss_func="BinaryCrossentropy",
+        metric_funcs=[],
+    )
+    GAN_compile_cfg = GANCompileParams(
+        generator_params=generator_compile_config,
+        discriminator_params=discriminator_compile_config,
+    )
+
+    search_alg_params = BaseSearchParameters()
+    search_alg_params.model_cfg = GAN_config
+    search_alg_params.compile_cfg = GAN_compile_cfg
+    search_alg_params.data = (train_data_x, train_data_y)
+    search_alg_params.val_data = (validation_data_x, validation_data_y)
+
+    grid_search_parameters = GridSearchParameters(search_alg_params)
+    grid_search_parameters.min_epoch = 5
+    grid_search_parameters.max_epoch = 10
+    grid_search_parameters.epoch_step = 5
+
+    (
+        result_metric_value,
+        result_epoch,
+        result_loss_name,
+        result_optimizer,
+        result_nn,
+    ) = grid_search(grid_search_parameters)
+
     assert True
 
 

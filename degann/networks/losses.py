@@ -112,6 +112,7 @@ _losses: dict = {
     "MeanSquaredLogarithmicError": keras.losses.MeanSquaredLogarithmicError(),
     "RelativeAbsoluteError": RelativeAbsoluteError(),
     "MaxAbsoluteDeviation": MaxAbsoluteDeviation(),
+    "BinaryCrossentropy": keras.losses.BinaryCrossentropy(from_logits=True),
 }
 
 

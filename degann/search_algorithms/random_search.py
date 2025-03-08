@@ -61,14 +61,19 @@ def random_search(
             block_size=parameters.nn_alphabet_block_size,
             offset=parameters.nn_alphabet_offset,
         )
-        curr_best = imodel.IModel(
-            parameters.input_size, b, parameters.output_size, a + ["linear"]
+        cfg = imodel.TensorflowDenseNetParams(
+            input_size=parameters.input_size,
+            block_size=b,
+            output_size=parameters.output_size,
+            activation_func=a + ["linear"],
         )
-        curr_best.compile(
+        curr_best = imodel.IModel(cfg)
+        compile_cfg = imodel.SingleNetworkCompileParams(
             optimizer=parameters.optimizer,
             loss_func=parameters.loss_function,
-            metrics=[parameters.eval_metric] + parameters.metrics,
+            metric_funcs=[parameters.eval_metric] + parameters.metrics,
         )
+        curr_best.compile(compile_cfg)
         curr_epoch = gen[1].value()
         hist = curr_best.train(
             parameters.data[0],

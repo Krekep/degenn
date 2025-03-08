@@ -17,6 +17,7 @@ act_to_hex = {
     "softplus": "a",
     "softsign": "b",
     "parabolic": "c",
+    "leaky_relu": "d",
 }
 hex_to_act = {v: k for k, v in act_to_hex.items()}
 
@@ -26,7 +27,7 @@ alph_n_div2 = "02468ace"
 alph_n_div4 = "048c"
 
 alphabet_activations_cut = "0689"
-alphabet_activations = "0123456789abc"
+alphabet_activations = "0123456789abcd"
 default_alphabet: list[str] = [
     "".join(elem) for elem in product(alph_n_full, alphabet_activations)
 ]
@@ -53,8 +54,10 @@ def encode(nn: imodel.IModel, offset: Optional[int] = None) -> str:
 
     offset = min(blocks) if offset is None else offset
     for layer, act in zip(blocks, activations):
-        curr = hex(layer - offset)[2:] + act_to_hex[act]
-        res += curr
+        if act == "|":
+            res += "|" + hex(layer - offset)[2:] + "|"
+        else:
+            res += hex(layer - offset)[2:] + act_to_hex[act]
 
     return res
 
@@ -78,8 +81,20 @@ def decode(s: str, block_size: int = 1, offset: int = 0) -> Tuple[List[int], Lis
     """
     blocks = []
     activations = []
-    for block in range(0, len(s), block_size + 1):
-        temp = s[block : block + block_size]
-        blocks.append(int(temp, 16) + offset)
-        activations.append(hex_to_act[s[block + block_size]])
+
+    i = 0
+    while i < len(s):
+        block_end = i + block_size
+
+        if s[i] == "|":
+            i += 1
+            blocks.append(int(s[i:block_end], 16) + offset)
+            activations.append("|")
+        else:
+            blocks.append(int(s[i:block_end], 16) + offset)
+            activations.append(hex_to_act[s[block_end]])
+
+        # Skip past the next separator "|" or move to the next block
+        i = block_end + 1
+
     return blocks, activations

@@ -80,12 +80,11 @@ def log_to_file(history: dict, fn: str) -> None:
 def log_search_step(
     model: IModel,
     activations: list[str],
-    code: str,
     epoch: int,
     optimizer: str,
     loss_function: str,
-    loss: float,
-    validation_loss: Optional[float],
+    loss: list[float],
+    validation_loss: Optional[list[float]],
     metric_value: float,
     validation_metric_value: Optional[float],
     file_name: str,
@@ -114,7 +113,6 @@ def log_search_step(
     history = SearchHistory()
     history.shapes = [model.get_shape]
     history.activations = [activations]
-    history.code = [code]
     history.epoch = [epoch]
     history.optimizer = [optimizer]
     history.loss_function = [loss_function]
@@ -130,7 +128,6 @@ class SearchHistory:
     def __init__(self: "SearchHistory") -> None:
         self.shapes: list[list[int]]
         self.activations: list[list[str]]
-        self.code: list[str]
         self.epoch: list[int]
         self.optimizer: list[str]
         self.loss_function: list[str]

@@ -58,20 +58,29 @@ def simulated_annealing(
             block_size=parameters.nn_alphabet_block_size,
             offset=parameters.nn_alphabet_offset,
         )
-        curr_best = imodel.IModel(
-            parameters.input_size, b, parameters.output_size, a + ["linear"]
+        cfg = imodel.TensorflowDenseNetParams(
+            input_size=parameters.input_size,
+            block_size=b,
+            output_size=parameters.output_size,
+            activation_func=a + ["linear"],
         )
+        curr_best = imodel.IModel(cfg)
     else:
-        curr_best = imodel.IModel(
-            parameters.input_size, [], parameters.output_size, ["linear"]
+        cfg = imodel.TensorflowDenseNetParams(
+            input_size=parameters.input_size,
+            block_size=[],
+            output_size=parameters.output_size,
+            activation_func=["linear"],
         )
+        curr_best = imodel.IModel(cfg)
         curr_best = curr_best.from_dict(parameters.start_net)
 
-    curr_best.compile(
+    compile_cfg = imodel.SingleNetworkCompileParams(
         optimizer=parameters.optimizer,
         loss_func=parameters.loss_function,
-        metrics=[parameters.eval_metric] + parameters.metrics,
+        metric_funcs=[parameters.eval_metric] + parameters.metrics,
     )
+    curr_best.compile(compile_cfg)
 
     curr_epoch = gen[1].value()
     hist = curr_best.train(
@@ -140,14 +149,19 @@ def simulated_annealing(
             block_size=parameters.nn_alphabet_block_size,
             offset=parameters.nn_alphabet_offset,
         )
-        neighbor = imodel.IModel(
-            parameters.input_size, b, parameters.output_size, a + ["linear"]
+        neighbor_cfg = imodel.TensorflowDenseNetParams(
+            input_size=parameters.input_size,
+            block_size=b,
+            output_size=parameters.output_size,
+            activation_func=a + ["linear"],
         )
-        neighbor.compile(
+        neighbor = imodel.IModel(neighbor_cfg)
+        neighbor_compile_cfg = imodel.SingleNetworkCompileParams(
             optimizer=parameters.optimizer,
             loss_func=parameters.loss_function,
-            metrics=[parameters.eval_metric] + parameters.metrics,
+            metric_funcs=[parameters.eval_metric] + parameters.metrics,
         )
+        neighbor.compile(neighbor_compile_cfg)
         neighbor_hist = neighbor.train(
             parameters.data[0],
             parameters.data[1],

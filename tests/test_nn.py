@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 
 from degann.networks.topology.tf_densenet import TensorflowDenseNet
+from degann.networks.topology.topology_parameters import TensorflowDenseNetParams
 from degann.networks.imodel import IModel
 from tests.utils import array_compare, init_params
 
@@ -97,14 +98,16 @@ def test_densenet_predict(inp, shape, act_init, w_init, b_init, out_size, expect
         weight_name=w_init, bias_name=b_init
     )
 
-    nn = TensorflowDenseNet(
-        shape[0],
-        shape[1],
+    nn_cfg = TensorflowDenseNetParams(
+        input_size=shape[0],
+        block_size=shape[1],
+        output_size=out_size,
         activation_func=act_init,
         weight=weight_initializer,
         biases=bias_initializer,
-        output_size=out_size,
     )
+    nn = TensorflowDenseNet(nn_cfg)
+
     res = nn(inp).numpy()
     assert array_compare(res, expected)
 

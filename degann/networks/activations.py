@@ -43,6 +43,7 @@ _activation_name = {
     "softplus": tf.keras.activations.softplus,
     "softsign": tf.keras.activations.softsign,
     "parabolic": parabolic,
+    "leaky_relu": tf.nn.leaky_relu,
 }
 
 

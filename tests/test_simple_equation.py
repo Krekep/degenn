@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 from degann.networks.imodel import IModel
+from degann.networks.topology.topology_parameters import TensorflowDenseNetParams
 from tests.utils import array_compare, init_params
 from degann.equations import simple_equation
 
@@ -118,14 +119,15 @@ def test_build_network_answer(eq_vars, shape, act_init, w_init, b_init, expected
         weight_name=w_init, bias_name=b_init
     )
 
-    nn = IModel(
-        shape[0],
-        shape[1],
-        shape[2],
+    nn_cfg = TensorflowDenseNetParams(
+        input_size=shape[0],
+        block_size=shape[1],
+        output_size=shape[2],
         activation_func=act_init,
-        weight_init=weight_initializer,
-        bias_init=bias_initializer,
+        weight=weight_initializer,
+        biases=bias_initializer,
     )
+    nn = IModel(nn_cfg)
 
     variables = simple_equation.str_eq_to_params(eq_vars)
     actual = simple_equation.build_table(nn, variables)

@@ -147,40 +147,41 @@ def train(
         act = parameters[1]
         decorator_param = parameters[2]
         str_shape = "_".join(map(str, shape))
-        curr_net = imodel.IModel(
+        net_cfg = imodel.TensorflowDenseNetParams(
             input_size=input_len,
             block_size=shape,
             output_size=output_len,
             activation_func=act,
-            decorator_params=decorator_param,
             net_type=args.net_type,
             name=f"net{args.name_salt}_{str_shape}",
             is_debug=args.debug,
         )
+        curr_net = imodel.IModel(net_cfg, decorator_params=decorator_param)
         nets.append(curr_net)
     if args.use_rand_net:
         rand_net_params = _create_random_network(input_len, output_len)
         str_shape = "_".join(map(str, rand_net_params[0]))
-        rand_net = imodel.IModel(
+        net_cfg = imodel.TensorflowDenseNetParams(
             input_size=input_len,
             block_size=rand_net_params[0],
             output_size=output_len,
             activation_func=rand_net_params[1],
-            decorator_params=rand_net_params[2],
             net_type=args.net_type,
             name=f"net{args.name_salt}_{str_shape}",
         )
+        rand_net = imodel.IModel(net_cfg, decorator_params=rand_net_params[2])
         nets.append(rand_net)
 
     # compile
     for nn in nets:
-        nn.compile(
+        compile_cfg = imodel.SingleNetworkCompileParams(
             rate=args.eps,
             optimizer=args.optimizer,
             loss_func=args.loss_function,
-            metrics=[args.eval_metric] + args.metrics,
+            metric_funcs=[args.eval_metric] + args.metrics,
             # run_eagerly=True,
         )
+        nn.compile(compile_cfg)
 
     if args.debug:
         print("Success prepared")
