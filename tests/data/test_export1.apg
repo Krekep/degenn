@@ -1,0 +1,50 @@
+
+Package: DEGANN
+version: 1.1.5
+Author: Alimov Pavel Gennadievich
+{
+  "net_type": "TFDense",
+  "name": "net",
+  "input_size": 2,
+  "block_size": [
+    1
+  ],
+  "output_size": 1,
+  "layer": [
+    {
+      "shape": 1,
+      "inp_size": 2,
+      "weights": [
+        [
+          0.2640812397003174
+        ],
+        [
+          -0.24541735649108887
+        ]
+      ],
+      "biases": [
+        -0.7693405151367188
+      ],
+      "layer_type": "TensorflowDense",
+      "dtype": "float32",
+      "activation": "sigmoid",
+      "decorator_params": null
+    }
+  ],
+  "out_layer": {
+    "shape": 1,
+    "inp_size": 1,
+    "weights": [
+      [
+        0.3718595504760742
+      ]
+    ],
+    "biases": [
+      -0.12889409065246582
+    ],
+    "layer_type": "TensorflowDense",
+    "dtype": "float32",
+    "activation": "sigmoid",
+    "decorator_params": null
+  }
+}

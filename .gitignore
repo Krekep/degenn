@@ -6,3 +6,5 @@ cnn_tester.py
 .venv
 .gitignore
 log_net.csv
+.mypy_cache
+.pytest_cache

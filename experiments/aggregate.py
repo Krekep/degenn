@@ -53,9 +53,9 @@ if __name__ == "__main__":
             sheets[func_name][(alg_name)][loss][threshold][data_size][
                 "Time(s)"
             ].value = round(mean_time, 2)
-            sheets[func_name][(alg_name)][loss][threshold][data_size]["Count"].value = (
-                round(mean_nn, 2)
-            )
+            sheets[func_name][(alg_name)][loss][threshold][data_size][
+                "Count"
+            ].value = round(mean_nn, 2)
             sheets[func_name][(alg_name)][loss][threshold][data_size][
                 "Launch 20"
             ].value = int(100 * (count_success / all_launches))
