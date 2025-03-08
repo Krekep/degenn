@@ -9,11 +9,15 @@ def get_cell_dict_for_sheet(
     curr_sheet = table.worksheet(title)
     all_cells = curr_sheet.get_all_cells()
     cells_dict = {
-        f"{chr(64 + cell.col)}{cell.row}"
-        if cell.col <= 26
-        else f"{chr(64 + cell.col // 26)}{chr(64 + cell.col % 26)}{cell.row}"
-        if cell.col != 52
-        else f"AZ{cell.row}": cell
+        (
+            f"{chr(64 + cell.col)}{cell.row}"
+            if cell.col <= 26
+            else (
+                f"{chr(64 + cell.col // 26)}{chr(64 + cell.col % 26)}{cell.row}"
+                if cell.col != 52
+                else f"AZ{cell.row}"
+            )
+        ): cell
         for cell in all_cells
     }
 
