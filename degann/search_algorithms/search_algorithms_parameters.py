@@ -1,6 +1,7 @@
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, TypeAlias
 
 import numpy as np
+import tensorflow as tf
 
 from degann.search_algorithms.generate import generate_neighbor
 from degann.search_algorithms.nn_code import default_alphabet
@@ -11,6 +12,44 @@ from degann.search_algorithms.simulated_annealing_functions import (
     distance_const,
 )
 from degann.search_algorithms.utils import add_useless_argument
+
+LossFunc: TypeAlias = Callable[
+    [tf.keras.Model, tf.GradientTape, tf.Tensor, tf.Tensor], float | int
+]
+
+
+class BaseNetParams:
+    __slots__: list[str] = []
+
+    def dict(self):
+        try:
+            return {slot: getattr(self, slot) for slot in self.__slots__}
+        except AttributeError as exc:
+            raise ValueError(
+                f"Parameter {exc.name} of class {self.__class__.__name__} is not specified"
+            )
+
+
+class DenseParams(BaseNetParams):
+    pass
+
+
+class PINNParams(BaseNetParams):
+    def __init__(self) -> None:
+        self.phys_func: LossFunc
+        self.boundary_func: LossFunc
+        self.phys_k: float | int = 0
+        self.boundary_k: float | int = 0
+
+    __slots__ = [
+        "phys_func",
+        "boundary_func",
+        "phys_k",
+        "boundary_k",
+    ]
+
+
+NetSpecificParams: TypeAlias = PINNParams | DenseParams
 
 
 class BaseSearchParameters:
@@ -57,6 +96,7 @@ class BaseSearchParameters:
         "input_size",
         "output_size",
         "data",
+        "net_type",
         "val_data",
         "nn_max_length",
         "nn_min_length",
@@ -72,12 +112,15 @@ class BaseSearchParameters:
         "file_name",
         "metrics",
         "eval_metric",
+        "net_specific_params",
     ]
 
     def __init__(self) -> None:
         self.input_size: int
         self.output_size: int
         self.data: tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+        self.net_type: str = "DenseNet"
+        self.net_specific_params: NetSpecificParams = DenseParams()
         self.val_data: Optional[
             tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
         ] = None
@@ -100,6 +143,7 @@ class BaseSearchParameters:
         self.input_size = other.input_size
         self.output_size = other.output_size
         self.data = other.data
+        self.net_type = other.net_type
         self.val_data = other.val_data
         self.nn_max_length = other.nn_max_length
         self.nn_min_length = other.nn_min_length
